@@ -1,4 +1,4 @@
-﻿/*===========================
+/*===========================
 
 
 			CSGO RPGMOD
@@ -15,6 +15,15 @@ log:
 #include <sourcemod>
 #include <sdktools>
 #include <adminmenu>
+
+#define MAXPLAYER 65
+
+//玩家属性
+new g_lv[MAXPLAYER]
+new g_xp[MAXPLAYER]
+new g_sp[MAXPLAYER]
+new g_money[MAXPLAYER]
+new g_job[MAXPLAYER]
 
 //Mod info
 public Plugin:myinfo=
@@ -33,10 +42,18 @@ public OnPluginStart()
 	if(!StrEqual(Game_Name, "csgo", false))
 		SetFailState("不是CSGO你玩JB");
 	
-	HookEvent("round_start",			Event_RoundStart);
+	HookEvent("round_start", Event_RoundStart);
+	HookEvent("player_hurt", Event_PlayerHurt, EventHookMode_Pre);
 }
 
 public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroadcast)
 {
-	PrintToChatAll("\x01M \x02o \x03t \x04h \x05e \x06r \x07F \x08u \x09c \x10k");
+	//1 白 2深红 3紫 4绿 5淡绿 6橄榄绿 7红淡一点 8淡紫 9淡黄 10咖啡色
+	PrintToServer("\x03[RPGmod]\x05%T", "GameStart", LANG_SERVER);
+}
+
+public Action:Event_PlayerHurt(Handle:event, String:event_name[], bool:dontBroadcast)
+{
+    new victim = GetClientOfUserId(GetEventInt(event, "userid"));
+	
 }
