@@ -5,4 +5,16 @@
 		"en"			"Ready to fight!"
 		"chi"			"准备战斗!"
 	}
+	
+	"PluginPrefix"
+	{
+		"en"			"RPG"
+		"chi"			"RPG"
+	}
+	
+	"Dead_CT"
+	{
+		"en"			"You Dead!Please Wait %s sec to Respawn"
+		"chi"			"你跪了! %s 秒后复活"
+	}
 }
