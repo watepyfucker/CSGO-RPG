@@ -18,6 +18,7 @@ log:
 #include <cstrike>
 
 #define MAXPLAYER 65
+#define NEXTLVXP(%1) (g_need_xp *g_lv[%1]* g_lv[%1])
 
 //玩家属性
 new g_lv[MAXPLAYER]					//等级
@@ -56,6 +57,7 @@ public OnPluginStart()
 	HookEvent("player_death", Event_PlayerDeath)
 	
 	AddCommandListener(Command_JoinTeam, "jointeam"); 
+	
 	LoadTranslations("BorderRPG.phrases");
 }
 
