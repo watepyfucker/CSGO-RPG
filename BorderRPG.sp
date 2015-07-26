@@ -14,7 +14,6 @@ log:
 
 #include <sourcemod>
 #include <sdktools>
-#include <morecolors>
 #include <adminmenu>
 
 //Mod info
