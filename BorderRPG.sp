@@ -52,12 +52,16 @@ public OnPluginStart()
 	
 	HookEvent("round_start", Event_RoundStart)
 	HookEvent("player_hurt", Event_PlayerHurt, EventHookMode_Pre)
+	
+	LoadTranslations("BorderRPG.phrases");
 }
 
 public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroadcast)
 {
 	//1 白 2深红 3紫 4绿 5淡绿 6橄榄绿 7红淡一点 8淡紫 9淡黄 10咖啡色
-	PrintToChatAll("\x01 \x02[RP\x04Gmod\x03] \x05游戏已开始！")
+	PrintToChatAll("\x01 \x03[RPGmod]\x02%T", "GameStart", LANG_SERVER);
+	PrintHintTextToAll("<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","GameStart",LANG_SERVER);
+	PrintCenterTextAll("<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","GameStart",LANG_SERVER);
 }
 
 public Action:Event_PlayerHurt(Handle:event, String:event_name[], bool:dontBroadcast)
@@ -65,7 +69,5 @@ public Action:Event_PlayerHurt(Handle:event, String:event_name[], bool:dontBroad
 	new attacker = GetClientOfUserId(GetEventInt(event, "attacker"))
 	new damage = GetEventInt(event, "dmg_health")
 	
-	// PrintCenterText(attacker, "-%dHP", damage)
-	PrintHintText(attacker, "<font color='#FF6600'>-%dHP</font>", damage)
-	// PrintCenterText(attacker, "\x02-%dHP", damage)
+	PrintHintText(attacker, "<font color='#FF6600'>    -%dHP</font>", damage)
 }
