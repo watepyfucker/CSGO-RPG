@@ -1,0 +1,8 @@
+"Phrases"
+{
+	"GameStart"
+	{
+		"en"			"Ready to fight!"
+		"chi"			"准备战斗!"
+	}
+}
