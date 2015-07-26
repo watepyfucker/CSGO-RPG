@@ -15,6 +15,7 @@ log:
 #include <sourcemod>
 #include <sdktools>
 #include <adminmenu>
+#include <cstrike>
 
 #define MAXPLAYER 65
 
@@ -52,7 +53,9 @@ public OnPluginStart()
 	
 	HookEvent("round_start", Event_RoundStart)
 	HookEvent("player_hurt", Event_PlayerHurt, EventHookMode_Pre)
+	HookEvent("player_death", Event_PlayerDeath)
 	
+	AddCommandListener(Command_JoinTeam, "jointeam"); 
 	LoadTranslations("BorderRPG.phrases");
 }
 
@@ -70,4 +73,18 @@ public Action:Event_PlayerHurt(Handle:event, String:event_name[], bool:dontBroad
 	new damage = GetEventInt(event, "dmg_health")
 	
 	PrintHintText(attacker, "<font color='#FF6600'>    -%dHP</font>", damage)
+}
+
+public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroadcast)
+{
+	
+}
+
+public Action:Command_JoinTeam(client, const String:command[], args)
+{
+	if (!IsClientConnected(client)) 
+        return Plugin_Continue; 
+	
+	CS_SwitchTeam(client, CS_TEAM_CT)
+	return Plugin_Stop;
 }
