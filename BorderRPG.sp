@@ -60,5 +60,6 @@ public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroad
 public Action:Event_PlayerHurt(Handle:event, String:event_name[], bool:dontBroadcast)
 {
     new victim = GetClientOfUserId(GetEventInt(event, "userid"));
-	
+	new damage = GetEventInt(event, "dmg_health")
+	PrintHintText(attacker, "<font color='#FF6600'>-%dHP</font>", damage)
 }
