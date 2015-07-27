@@ -12,10 +12,28 @@
 		"chi"			"RPG"
 	}
 	
+	"Cant_Find_Save_File"
+	{
+		"en"			"Cannot Find The %s File, it will be create again"
+		"chi"		"找不到文件:%s，存档将被重新建立"
+	}
+	
+	"Player_Data_Saved"
+	{
+		"en"			"Your data has been saved!"
+		"chi"		"你的资料已保存！"
+	}
+	
+	"Player_Data_Loaded"
+	{
+		"en" 			"Your data successfully loaded"
+		"chi"		"你的资料成功读取！"
+	}
+	
 	"Dead_CT"
 	{
-		"en"			"You Dead!Please Wait %s sec to Respawn"
-		"chi"			"你跪了! %s 秒后复活"
+		"en"			"You Dead!Please Wait %d sec to Respawn"
+		"chi"			"你跪了! %d 秒后复活"
 	}
 	
 	"MainMenu_Title"
@@ -74,14 +92,14 @@
 	
 	"SkillMenu_AddModule"
 	{
-		"en"			"Add %T %T: %d"
-		"chi"			"增加 %T %T: %d"
+		"en"			"Add %T: %d"
+		"chi"			"增加 %T: %d"
 	}
 	
 	"UseSPSuccess"
 	{
-		"en"			"Added %d Successful!Now you have %d SkillPoint(s)"
-		"chi"			"成功增加%d!现在你还剩下 %d 属性点"
+		"en"			"Added %s Successful!Now you have %d SkillPoint(s)"
+		"chi"			"成功增加%s!现在你还剩下 %d 属性点"
 	}
 	
 	"UseSPFailed"
