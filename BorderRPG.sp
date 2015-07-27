@@ -277,10 +277,56 @@ public MenuHandler_MainMenu(Handle:menu, MenuAction:action, param1, param2)
 /*
 ===================================
 		
-		   皮肤枪
+		   各种函数
 		
 ===================================
 */
 
+//皮肤枪
+public rpg_Give_Weapon_Skin(client,String:WpnName[], SkinId)
+{
+	new entity = GivePlayerItem(client,  WpnName);
+	new m_iItemIDHigh = GetEntProp(entity, Prop_Send, "m_iItemIDHigh");
+	new m_iItemIDLow = GetEntProp(entity, Prop_Send, "m_iItemIDLow");
 
+	SetEntProp(entity,Prop_Send,"m_iItemIDLow",2048);
+	SetEntProp(entity,Prop_Send,"m_iItemIDHigh",0);
 
+	SetEntProp(entity,Prop_Send,"m_nFallbackPaintKit", SkinId);
+    
+	new Handle:pack;
+	CreateDataTimer(2.0, RestoreItemID, pack);
+	WritePackCell(pack,entity);
+	WritePackCell(pack, m_iItemIDHigh);
+	WritePackCell(pack, m_iItemIDLow);
+}
+
+public Action:RestoreItemID(Handle:timer, Handle:pack)
+{
+	new entity;
+	new m_iItemIDHigh;
+	new m_iItemIDLow;
+    
+	ResetPack(pack);
+	entity = ReadPackCell(pack);
+	m_iItemIDHigh = ReadPackCell(pack);
+	m_iItemIDLow = ReadPackCell(pack);
+    
+    
+	SetEntProp(entity,Prop_Send,"m_iItemIDHigh",m_iItemIDHigh);
+	SetEntProp(entity,Prop_Send,"m_iItemIDLow",m_iItemIDLow);
+}  
+
+//扒武器
+public rpg_Strip_Weapon(client, slot)
+{
+	if(client > 0 && IsClientInGame(client) && IsPlayerAlive(client))
+	{
+		new WpnEnt
+		if((WpnEnt = GetPlayerWeaponSlot(client, slot)) != -1)
+		{
+			RemovePlayerItem(client, WpnEnt);
+			AcceptEntityInput(WpnEnt, "Kill");
+		}
+	}
+}
