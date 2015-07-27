@@ -17,4 +17,16 @@
 		"en"			"You Dead!Please Wait %s sec to Respawn"
 		"chi"			"你跪了! %s 秒后复活"
 	}
+	
+	"MainMenu_Title"
+	{
+		"en"			"---[BorderRPG Main Menu]---\nLv.%d Money:$%d Job:%s \nExp:%d/%d  metempsychosis:%d Skillpoint:%d \n Str:%d Agi:%d Hea:%d End:%d Int:%d Luck:%d"
+		"chi"			"---[BorderRPG 主菜单]---\n等级:Lv.%d 金钱:$%d 职业:%s \n经验:%d/%d 转生:%d转 属性点:%d \n力量:%d 敏捷:%d 生命:%d 耐力:%d 智力:%d 运气:%d"
+	}
+	
+	"SkillMenu_Title"
+	{
+		"en"			"a"
+		"chi"			"a"
+	}
 }
