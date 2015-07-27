@@ -14,8 +14,8 @@
 	
 	"Dead_CT"
 	{
-		"en"			"You Dead!Please Wait %s sec to Respawn"
-		"chi"			"你跪了! %s 秒后复活"
+		"en"			"You Dead!Please Wait %d sec to Respawn"
+		"chi"			"你跪了! %d 秒后复活"
 	}
 	
 	"MainMenu_Title"

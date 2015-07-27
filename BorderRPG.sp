@@ -22,8 +22,6 @@ log:
 #define KILL_T_XP		GetConVarInt(g_kill_T_xp)
 #define KILL_T_MONEY 	GetConVarInt(g_kill_T_money)
 
-#define JOB_NUM 3
-
 new const String:g_job_name[][] = {"无职业", "精灵", "游侠", "医师"}
 
 //玩家属性
@@ -42,8 +40,9 @@ new g_luc[MAXPLAYER]				//运气
 new g_money[MAXPLAYER]				//金钱
 new g_job[MAXPLAYER]				//职业
 
-//存活人数
-new g_AliveTeam			//CT存活
+//Vars
+new g_Player_RespawnTime[MAXPLAYER]	//复活时间
+new g_AliveTeam									//CT存活
 
 //Convars
 new Handle:g_RespawnTime_CT				//CT复活时间
@@ -52,7 +51,6 @@ new Handle:g_kill_T_xp						//杀死T获得的经验(基础量)
 new Handle:g_kill_T_money				//杀死T获得的金钱(基础量)
 
 //Timers
-new Handle:g_RespawnTimer[MAXPLAYER]			//复活
 new Handle:g_PlayerThinkTimer[MAXPLAYER]	//Think
 
 //Mod info
@@ -99,7 +97,7 @@ public EventsInit()
 
 public CvarsInit()
 {
-	g_RespawnTime_CT = CreateConVar("rpg_respawntime_ct", "60.0", "CT死亡后多久复活");
+	g_RespawnTime_CT = CreateConVar("rpg_respawntime_ct", "60", "CT死亡后多久复活");
 	g_lvup_need_xp = CreateConVar("rpg_xp_lvup", "100", "升级所需经验值(基础量)");
 	g_kill_T_xp = CreateConVar("rpg_kill_t_get_xp", "10", "杀死T获得的经验(基础量)");
 	g_kill_T_money = CreateConVar("rpg_kill_t_get_money", "10", "杀死T获得的金钱(基础量)");
@@ -132,15 +130,7 @@ public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroad
 //玩家复活
 public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dontBroadcast)
 {
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	new team = GetClientTeam(client);
-		
-	// if(team == CS_TEAM_CT)
-	// {
-		// g_AliveTeam++;
-		// g_xp[client] = 0
-		// g_lv[client] = 1
-	// }
+	// new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	return Plugin_Continue;
 }
 
@@ -149,6 +139,9 @@ public OnClientConnected(client)
 {
 	if(!IsFakeClient(client))
 	{
+		g_lv[client] ++
+		g_xp[client] ++
+		g_Player_RespawnTime[client] = -1
 		g_PlayerThinkTimer[client] = CreateTimer(1.0, Timer_PlayerThink, client, TIMER_REPEAT);
 	}
 }
@@ -190,8 +183,7 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 	if(teamA == CS_TEAM_CT)
 	{
 		g_AliveTeam--;
-		g_RespawnTimer[victim] = CreateTimer(GetConVarFloat(g_RespawnTime_CT), Timer_Respawn, victim);
-		PrintHintText(victim, "<font color='#66ccff'>[RPGMOD]</font><font color='#66ff00'>%T</font>", "Dead_CT",LANG_SERVER)
+		g_Player_RespawnTime[victim] = GetConVarInt(g_RespawnTime_CT)
 	}
 	
 	if(teamB == CS_TEAM_CT && teamA == CS_TEAM_T)
@@ -211,13 +203,6 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 		
 ===================================
 */
-
-//复活事件
-public Action:Timer_Respawn(Handle:Timer, any:client)
-{
-	CS_RespawnPlayer(client);
-}
-
 //Player Think
 public Action:Timer_PlayerThink(Handle:Timer, any:client)
 {
@@ -226,6 +211,18 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 		g_lv[client] ++
 		g_xp[client] -= NEXTLVXP(client)
 		PrintToChat(client,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER,g_lv[client]);
+	}
+	
+	if(g_Player_RespawnTime[client] > 0)
+	{
+		g_Player_RespawnTime[client] --
+		PrintHintText(client, "<font color='#66ccff'>[RPGMOD]</font><font color='#66ff00'>%T</font>", "Dead_CT",LANG_SERVER, g_Player_RespawnTime[client])
+	}
+	
+	if(!g_Player_RespawnTime[client])
+	{
+		g_Player_RespawnTime[client] = -1
+		CS_RespawnPlayer(client)
 	}
 }
 
@@ -288,6 +285,8 @@ public Action:MenuShow_MainMenu(id)
 	decl String:Item[64]
 	Format(Item, sizeof(Item), "%T ", "SkillMenu_Title", LANG_SERVER);
 	AddMenuItem(menu, "#Choice1", Item);
+	Format(Item, sizeof(Item), "B ");
+	AddMenuItem(menu, "#Choice2", Item);
 	
 	SetMenuExitButton(menu, false);
 	DisplayMenu(menu, id, MENU_TIME_FOREVER);
