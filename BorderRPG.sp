@@ -107,6 +107,7 @@ public CvarsInit()
 public CommandInit()
 {
 	AddCommandListener(Command_JoinTeam, "jointeam"); 
+	AddCommandListener(Command_Test, "sm_testa"); 
 }
 
 
@@ -232,6 +233,13 @@ public Action:Command_JoinTeam(client, const String:command[], args)
 	CS_SwitchTeam(client, CS_TEAM_CT)
 	return Plugin_Stop;
 }
+
+public Action:Command_Test(client, const String:command[], args)
+{
+	rpg_Strip_Weapon(client, 1)
+	rpg_Give_Weapon_Skin(client, "weapon_ak47", 344)
+}
+
 
 public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)
 {
