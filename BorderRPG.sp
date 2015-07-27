@@ -141,10 +141,12 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	new team = GetClientTeam(client);
 		
-	if(team == CS_TEAM_CT)
-		g_AliveTeam++;
-		g_xp[client] = 0
-		g_lv[client] = 1
+	// if(team == CS_TEAM_CT)
+	// {
+		// g_AliveTeam++;
+		// g_xp[client] = 0
+		// g_lv[client] = 1
+	// }
 	return Plugin_Continue;
 }
 
@@ -235,7 +237,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 {
 	if (buttons & IN_SPEED)
 	{
-		//MenuShow_MainMenu(client)
+		MenuShow_MainMenu(client)
 		//SHOWMENU
 	}
 	return Plugin_Continue
@@ -248,7 +250,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 		
 ===================================
 */
-/*public Action:MenuShow_MainMenu(id)
+public Action:MenuShow_MainMenu(id)
 {
 	new Handle:menu = CreateMenu(MenuHandler_MainMenu);
 	decl String:MenuTitle[200]
@@ -270,4 +272,15 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 public MenuHandler_MainMenu(Handle:menu, MenuAction:action, param1, param2)
 {
 	
-}*/
+}
+
+/*
+===================================
+		
+		   皮肤枪
+		
+===================================
+*/
+
+
+
