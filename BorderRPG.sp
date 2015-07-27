@@ -52,7 +52,8 @@ new Handle:g_kill_T_xp						//杀死T获得的经验(基础量)
 new Handle:g_kill_T_money				//杀死T获得的金钱(基础量)
 
 //Timers
-new Handle:g_RespawnTimer[MAXPLAYER]
+new Handle:g_RespawnTimer[MAXPLAYER]			//复活
+new Handle:g_PlayerThinkTimer[MAXPLAYER]	//Think
 
 //Mod info
 public Plugin:myinfo=
@@ -110,16 +111,15 @@ public CommandInit()
 	AddCommandListener(Command_Test, "sm_testa"); 
 }
 
-
-
 /*
 ===================================
 		
-		   回合开始/结束
+		   各种事件
 		
 ===================================
 */
 
+//回合开始
 public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroadcast)
 {
 	g_AliveTeam = 0
@@ -129,14 +129,7 @@ public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroad
 	//PrintCenterTextAll("<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","GameStart",LANG_SERVER);
 }
 
-/*
-===================================
-		
-		   玩家出生
-		
-===================================
-*/
-
+//玩家复活
 public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
@@ -151,14 +144,26 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 	return Plugin_Continue;
 }
 
-/*
-===================================
-		
-		   玩家伤害/死亡
-		
-===================================
-*/
+//玩家连接
+public OnClientConnected(client)
+{
+	if(!IsFakeClient(client))
+	{
+		g_PlayerThinkTimer[client] = CreateTimer(1.0, Timer_PlayerThink, client, TIMER_REPEAT);
+	}
+}
 
+//玩家断线
+public OnClientDisconnect(client)
+{
+	if(!IsFakeClient(client))
+	{
+		KillTimer(g_PlayerThinkTimer[client])
+		g_PlayerThinkTimer[client] = INVALID_HANDLE;
+	}
+}
+
+//玩家伤害
 public Action:Event_PlayerHurt(Handle:event, String:event_name[], bool:dontBroadcast)
 {
 	new attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
@@ -171,6 +176,7 @@ public Action:Event_PlayerHurt(Handle:event, String:event_name[], bool:dontBroad
 	return Plugin_Continue;
 }
 
+//玩家死亡
 public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroadcast)
 {
 	new victim = GetClientOfUserId(GetEventInt(event, "userid"));
@@ -192,12 +198,6 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 	{
 		g_xp[killer] += KILL_T_XP
 		PrintToChat(killer,"\x01 \x03[RPGmod]\x02%d/%i", g_xp[killer],NEXTLVXP(killer));
-		if(g_xp[killer] >= NEXTLVXP(killer))
-		{
-			g_lv[killer] += 1
-			g_xp[killer] = 0
-			PrintToChat(killer,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER,g_lv[killer]);
-		}
 			
 	}
 
@@ -207,14 +207,26 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 /*
 ===================================
 		
-			Tasks
+			Timer
 		
 ===================================
 */
 
+//复活事件
 public Action:Timer_Respawn(Handle:Timer, any:client)
 {
 	CS_RespawnPlayer(client);
+}
+
+//Player Think
+public Action:Timer_PlayerThink(Handle:Timer, any:client)
+{
+	if(g_xp[client] >= NEXTLVXP(client))
+	{
+		g_lv ++
+		g_xp[client] -= NEXTLVXP(client)
+		PrintToChat(client,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER,g_lv[client]);
+	}
 }
 
 /*
@@ -225,6 +237,7 @@ public Action:Timer_Respawn(Handle:Timer, any:client)
 ===================================
 */
 
+//Jointeam
 public Action:Command_JoinTeam(client, const String:command[], args)
 {
 	if (!IsClientConnected(client)) 
@@ -234,13 +247,14 @@ public Action:Command_JoinTeam(client, const String:command[], args)
 	return Plugin_Stop;
 }
 
+//
 public Action:Command_Test(client, const String:command[], args)
 {
 	rpg_Strip_Weapon(client, 1)
 	rpg_Give_Weapon_Skin(client, "weapon_ak47", 344)
 }
 
-
+//Button
 public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)
 {
 	if (buttons & IN_SPEED)
@@ -258,6 +272,8 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 		
 ===================================
 */
+
+//Main Menu
 public Action:MenuShow_MainMenu(id)
 {
 	new Handle:menu = CreateMenu(MenuHandler_MainMenu);
