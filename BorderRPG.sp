@@ -153,6 +153,9 @@ public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroad
 public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dontBroadcast)
 {
 	// new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	g_AliveTeam++
+	//setbp
+	
 	return Plugin_Continue;
 }
 
@@ -214,7 +217,6 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 	{
 		g_xp[killer] += KILL_T_XP
 		PrintToChat(killer,"\x01 \x03[RPGmod]\x02%d/%i", g_xp[killer],NEXTLVXP(killer));
-			
 	}
 
 	return Plugin_Continue;
@@ -232,8 +234,12 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 {
 	if(g_xp[client] >= NEXTLVXP(client))
 	{
+		//一开始你那个就直接 -= 了,如果=NEXTLVXP就直接负了
+		if(g_xp[client] > NEXTLVXP(client))
+			g_xp[client] -= NEXTLVXP(client)
+		else g_xp[client] = 0
 		g_lv[client] ++
-		g_xp[client] -= NEXTLVXP(client)
+		g_sp[client] += 5
 		PrintToChat(client,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER,g_lv[client]);
 	}
 	
@@ -288,7 +294,8 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 {
 	if (buttons & IN_SPEED)
 	{
-		MenuShow_MainMenu(client)
+		if(!IsFakeClient(client))
+			MenuShow_MainMenu(client)
 		//SHOWMENU
 	}
 	return Plugin_Continue
@@ -346,9 +353,9 @@ public Action:MenuShow_SkillMenu(id)
 	
 	
 	decl String:Item[64]
-	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"StrName",LANG_SERVER, g_str[id]);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"StrName",LANG_SERVER,g_str[id]);
 	AddMenuItem(menu, "#Choice1", Item);
-	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"DexName",LANG_SERVER, g_dex[id]);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"DexName",LANG_SERVER,g_dex[id]);
 	AddMenuItem(menu, "#Choice2", Item);
 	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"IntName",LANG_SERVER,g_int[id]);
 	AddMenuItem(menu, "#Choice3", Item);
@@ -387,6 +394,7 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		if (!strcmp(info,"#Choice1")) 
         {
 			g_str[param1] += 1
+			g_sp[param1] -= 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[0], g_sp[param1])
 			MenuShow_SkillMenu(param1);
 		}
@@ -395,6 +403,7 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		else if (!strcmp(info,"#Choice2")) 
         {
 			g_dex[param1] += 1
+			g_sp[param1] -= 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[1], g_sp[param1])
 			MenuShow_SkillMenu(param1);
 		}
@@ -403,6 +412,7 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		else if (!strcmp(info,"#Choice3")) 
         {
 			g_int[param1] += 1
+			g_sp[param1] -= 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[2], g_sp[param1])
 			MenuShow_SkillMenu(param1);
 		}
@@ -410,7 +420,8 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		//HEA
 		else if (!strcmp(info,"#Choice4")) 
 		{
-			g_int[param1] += 1
+			g_hea[param1] += 1
+			g_sp[param1] -= 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[3], g_sp[param1])
 			MenuShow_SkillMenu(param1);
 		}
@@ -419,6 +430,7 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		else if (!strcmp(info,"#Choice5")) 
         {
 			g_end[param1] += 1
+			g_sp[param1] -= 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[4], g_sp[param1])
 			MenuShow_SkillMenu(param1);
 		}
@@ -427,11 +439,10 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		else if (!strcmp(info,"#Choice6")) 
         {
 			g_luc[param1] += 1
+			g_sp[param1] -= 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[5], g_sp[param1])
 			MenuShow_SkillMenu(param1);
 		}
-		
-		g_sp[param1] --
 	}
 }
 
@@ -478,9 +489,8 @@ public rpg_Client_Load_Data(client)
 	g_hea[client] = KvGetNum(g_Rpg_Save, "HEA", 0); g_int[client] = KvGetNum(g_Rpg_Save, "INT", 0)
 	g_end[client] = KvGetNum(g_Rpg_Save, "END", 0); g_luc[client] = KvGetNum(g_Rpg_Save, "LUC", 0);
 	
-	PrintToServer("老子读了！");
 	KvGoBack(g_Rpg_Save)
-
+	
 }
 
 //重置玩家变量
