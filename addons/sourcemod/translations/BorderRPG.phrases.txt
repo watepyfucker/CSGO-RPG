@@ -14,8 +14,8 @@
 	
 	"Dead_CT"
 	{
-		"en"			"You Dead!Please Wait %d sec to Respawn"
-		"chi"			"你跪了! %d 秒后复活"
+		"en"			"You Dead!Please Wait %s sec to Respawn"
+		"chi"			"你跪了! %s 秒后复活"
 	}
 	
 	"MainMenu_Title"
@@ -26,8 +26,68 @@
 	
 	"SkillMenu_Title"
 	{
-		"en"			"a"
-		"chi"			"a"
+		"en"			"---[BorderRPG Skill Menu]---\nSkillPoint:%d"
+		"chi"			"---[BorderRPG 技能菜单]---\n属性点:%d"
+	}
+	
+	"SkillMenu_Select"
+	{
+		"en"			"Use SkillPoint"
+		"chi"			"加点"
+	}
+	
+	"StrName"
+	{
+		"en"			"Strange"
+		"chi"			"力量"
+	}
+	
+	"DexName"
+	{
+		"en"			"Dexterity"
+		"chi"			"敏捷"
+	}
+	
+	"IntName"
+	{
+		"en"			"Intelligence"
+		"chi"			"智力"
+	}
+	
+	"HeaName"
+	{
+		"en"			"Health"
+		"chi"			"生命"
+	}
+	
+	"EndName"
+	{
+		"en"			"Endurance"
+		"chi"			"耐力"
+	}
+	
+	"LucName"
+	{
+		"en"			"Luck"
+		"chi"			"运气"
+	}
+	
+	"SkillMenu_AddModule"
+	{
+		"en"			"Add %T %T: %d"
+		"chi"			"增加 %T %T: %d"
+	}
+	
+	"UseSPSuccess"
+	{
+		"en"			"Added %d Successful!Now you have %d SkillPoint(s)"
+		"chi"			"成功增加%d!现在你还剩下 %d 属性点"
+	}
+	
+	"UseSPFailed"
+	{
+		"en"			"You must have enough SkillPoint"
+		"chi"			"属性点不足"
 	}
 	
 	"LevelUp"
