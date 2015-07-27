@@ -157,11 +157,11 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 }
 
 //玩家连接
-public OnClientConnected(client)
+public OnClientPutInServer(client)
 {
 	if(!IsFakeClient(client))
 	{
-		// rpg_Reset_Player_Vars(client)
+		rpg_Reset_Player_Vars(client)
 		rpg_Client_Load_Data(client)
 		g_PlayerThinkTimer[client] = CreateTimer(1.0, Timer_PlayerThink, client, TIMER_REPEAT);
 	}
@@ -446,7 +446,7 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 public rpg_Client_Save_Data(client)
 {
 	new String:Str_SteamID[32]
-	IntToString(GetSteamAccountID(client), Str_SteamID, 31)
+	Format(Str_SteamID, 31, "%d", GetSteamAccountID(client))
 	KvJumpToKey(g_Rpg_Save, Str_SteamID, true);
 	KvSetNum(g_Rpg_Save, "LV", g_lv[client]);KvSetNum(g_Rpg_Save, "EXP", g_xp[client]);
 	KvSetNum(g_Rpg_Save, "SP", g_sp[client]);KvSetNum(g_Rpg_Save, "MONEY", g_money[client]);
@@ -463,9 +463,11 @@ public rpg_Client_Save_Data(client)
 //读档
 public rpg_Client_Load_Data(client)
 {
+	KvRewind(g_Rpg_Save)
 	new String:Str_SteamID[32]
-	IntToString(GetSteamAccountID(client), Str_SteamID, 31)
-	KvJumpToKey(g_Rpg_Save, Str_SteamID, true);
+	Format(Str_SteamID, 31, "%d", GetSteamAccountID(client))
+	if(!KvJumpToKey(g_Rpg_Save, Str_SteamID))
+		PrintToServer("%s", Str_SteamID);
 	
 	g_lv[client] = KvGetNum(g_Rpg_Save, "LV", 1); g_xp[client] = KvGetNum(g_Rpg_Save, "EXP", 0);
 	g_sp[client] = KvGetNum(g_Rpg_Save, "SP", GetConVarInt(g_lvup_get_sp)); 
@@ -477,7 +479,7 @@ public rpg_Client_Load_Data(client)
 	g_end[client] = KvGetNum(g_Rpg_Save, "END", 0); g_luc[client] = KvGetNum(g_Rpg_Save, "LUC", 0);
 	
 	PrintToServer("老子读了！");
-	KvRewind(g_Rpg_Save)
+	KvGoBack(g_Rpg_Save)
 
 }
 
