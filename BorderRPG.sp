@@ -223,7 +223,7 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 {
 	if(g_xp[client] >= NEXTLVXP(client))
 	{
-		g_lv ++
+		g_lv[client] ++
 		g_xp[client] -= NEXTLVXP(client)
 		PrintToChat(client,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER,g_lv[client]);
 	}
