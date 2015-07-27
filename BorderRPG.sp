@@ -18,9 +18,9 @@ log:
 #include <cstrike>
 
 #define MAXPLAYER 65
-#define NEXTLVXP(%1) (g_lvup_need_xp * g_lv[%1])
+#define NEXTLVXP(%1) (GetConVarInt(g_lvup_need_xp) * g_lv[%1])
 #define KILL_T_XP		GetConVarInt(g_kill_T_xp)
-#define KILL_T_MONEY GetConVarInt(g_kill_T_money)
+#define KILL_T_MONEY 	GetConVarInt(g_kill_T_money)
 
 #define JOB_NUM 3
 
@@ -99,6 +99,7 @@ public EventsInit()
 public CvarsInit()
 {
 	g_RespawnTime_CT = CreateConVar("rpg_respawntime_ct", "60.0", "CT死亡后多久复活");
+	g_lvup_need_xp = CreateConVar("rpg_xp_lvup", "100", "升级所需经验值(基础量)");
 	g_kill_T_xp = CreateConVar("rpg_kill_t_get_xp", "10", "杀死T获得的经验(基础量)");
 	g_kill_T_money = CreateConVar("rpg_kill_t_get_money", "10", "杀死T获得的金钱(基础量)");
 }
@@ -142,6 +143,8 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 		
 	if(team == CS_TEAM_CT)
 		g_AliveTeam++;
+		g_xp[client] = 0
+		g_lv[client] = 1
 	return Plugin_Continue;
 }
 
@@ -158,7 +161,7 @@ public Action:Event_PlayerHurt(Handle:event, String:event_name[], bool:dontBroad
 	new attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
 	new damage = GetEventInt(event, "dmg_health");
 	
-	if(!IsClientConnected(attacker))
+	if(!IsClientConnected(attacker) || IsFakeClient(attacker))
 		return Plugin_Continue;
 	
 	PrintHintText(attacker, "<font color='#FF6600'>    -%dHP</font>", damage)
@@ -172,7 +175,7 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 	new teamA = GetClientTeam(victim);
 	new teamB = GetClientTeam(killer);
 	
-	if(teamA == teamB || teamB == CS_TEAM_T)
+	if(teamA == teamB || teamB == CS_TEAM_T || IsFakeClient(killer))
 		return Plugin_Continue
 	
 	if(teamA == CS_TEAM_CT)
@@ -182,9 +185,17 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 		PrintHintText(victim, "<font color='#66ccff'>[RPGMOD]</font><font color='#66ff00'>%T</font>", "Dead_CT",LANG_SERVER)
 	}
 	
-	if(teamB == CS_TEAM_CT)
+	if(teamB == CS_TEAM_CT && teamA == CS_TEAM_T)
 	{
 		g_xp[killer] += KILL_T_XP
+		PrintToChat(killer,"\x01 \x03[RPGmod]\x02%d/%i", g_xp[killer],NEXTLVXP(killer));
+		if(g_xp[killer] >= NEXTLVXP(killer))
+		{
+			g_lv[killer] += 1
+			g_xp[killer] = 0
+			PrintToChat(killer,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER,g_lv[killer]);
+		}
+			
 	}
 
 	return Plugin_Continue;
@@ -224,7 +235,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 {
 	if (buttons & IN_SPEED)
 	{
-		MenuShow_MainMenu(client)
+		//MenuShow_MainMenu(client)
 		//SHOWMENU
 	}
 	return Plugin_Continue
@@ -237,7 +248,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 		
 ===================================
 */
-public Action:MenuShow_MainMenu(id)
+/*public Action:MenuShow_MainMenu(id)
 {
 	new Handle:menu = CreateMenu(MenuHandler_MainMenu);
 	decl String:MenuTitle[200]
@@ -259,4 +270,4 @@ public Action:MenuShow_MainMenu(id)
 public MenuHandler_MainMenu(Handle:menu, MenuAction:action, param1, param2)
 {
 	
-}
+}*/

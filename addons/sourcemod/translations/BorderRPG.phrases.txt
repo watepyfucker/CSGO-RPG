@@ -29,4 +29,10 @@
 		"en"			"a"
 		"chi"			"a"
 	}
+	
+	"LevelUp"
+	{
+		"en"			"UPLEVEL!Now you lv:%d"
+		"chi"			"升级了!现在你等级是:%d"
+	}
 }
