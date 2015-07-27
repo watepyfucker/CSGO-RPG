@@ -31,7 +31,7 @@ new g_sp[MAXPLAYER]					//技能点
 new g_mete[MAXPLAYER]				//转生
 
 new g_str[MAXPLAYER]				//力量
-new g_agi[MAXPLAYER]				//敏捷
+new g_dex[MAXPLAYER]				//敏捷
 new g_int[MAXPLAYER]				//智力
 new g_hea[MAXPLAYER]				//生命
 new g_end[MAXPLAYER]				//耐力
@@ -237,7 +237,7 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 //Jointeam
 public Action:Command_JoinTeam(client, const String:command[], args)
 {
-	if (!IsClientConnected(client)) 
+	if (!IsClientConnected(client))
         return Plugin_Continue; 
 	
 	CS_SwitchTeam(client, CS_TEAM_CT)
@@ -247,7 +247,7 @@ public Action:Command_JoinTeam(client, const String:command[], args)
 //
 public Action:Command_Test(client, const String:command[], args)
 {
-	rpg_Strip_Weapon(client, 1)
+	rpg_Strip_Weapon(client, 0)
 	rpg_Give_Weapon_Skin(client, "weapon_ak47", 344)
 }
 
@@ -276,25 +276,167 @@ public Action:MenuShow_MainMenu(id)
 	new Handle:menu = CreateMenu(MenuHandler_MainMenu);
 	decl String:MenuTitle[200]
 	Format(MenuTitle, sizeof(MenuTitle), "%T ", "MainMenu_Title", LANG_SERVER, 
-	g_lv[id], g_money[id], g_job_name[g_job[id]], g_xp[id], NEXTLVXP(id), g_mete[id], g_sp[id], g_str[id], g_agi[id], g_hea[id], g_end[id], g_int[id], g_luc[id])
+	g_lv[id], g_money[id], g_job_name[g_job[id]], g_xp[id], NEXTLVXP(id), g_mete[id], g_sp[id], g_str[id], g_dex[id], g_hea[id], g_end[id], g_int[id], g_luc[id])
 	
 	//等级:Lv.%d 金钱:$%d 职业:%s \n经验:%d/%d 转生:%d转 属性点:%d \n力量:%d 敏捷:%d 生命:%d 耐力:%d 智力:%d 运气:%d
 	SetMenuTitle(menu, MenuTitle)
 	
 	
 	decl String:Item[64]
-	Format(Item, sizeof(Item), "%T ", "SkillMenu_Title", LANG_SERVER);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_Select", LANG_SERVER);
 	AddMenuItem(menu, "#Choice1", Item);
 	Format(Item, sizeof(Item), "B ");
 	AddMenuItem(menu, "#Choice2", Item);
 	
 	SetMenuExitButton(menu, false);
 	DisplayMenu(menu, id, MENU_TIME_FOREVER);
+	
+	return Plugin_Handled;
 }
 
 public MenuHandler_MainMenu(Handle:menu, MenuAction:action, param1, param2)
 {
+	if (action == MenuAction_Select) 
+    {
+		new String:info[32];
+        
+        GetMenuItem(menu, param2, info, sizeof(info));
+		
+		if ( strcmp(info,"#Choice1") == 0 ) 
+        {
+			MenuShow_SkillMenu(param1);
+		}
+	}
+}
+
+//Skill Menu
+public Action:MenuShow_SkillMenu(id)
+{
+	new Handle:menu = CreateMenu(MenuHandler_SkillMenu);
+	decl String:MenuTitle[200]
+	Format(MenuTitle, sizeof(MenuTitle), "%T ", "SkillMenu_Title", LANG_SERVER, g_sp[id])
 	
+	SetMenuTitle(menu, MenuTitle)
+	
+	
+	decl String:Item[64]
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"StrName",LANG_SERVER,"StrName",LANG_SERVER,g_str[id]);
+	AddMenuItem(menu, "#Choice1", Item);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"DexName",LANG_SERVER,"DexName",LANG_SERVER,g_dex[id]);
+	AddMenuItem(menu, "#Choice2", Item);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"IntName",LANG_SERVER,"IntName",LANG_SERVER,g_int[id]);
+	AddMenuItem(menu, "#Choice3", Item);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"HeaName",LANG_SERVER,"HeaName",LANG_SERVER,g_hea[id]);
+	AddMenuItem(menu, "#Choice4", Item);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"EndName",LANG_SERVER,"EndName",LANG_SERVER,g_end[id]);
+	AddMenuItem(menu, "#Choice5", Item);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"LucName",LANG_SERVER,"LucName",LANG_SERVER,g_luc[id]);
+	AddMenuItem(menu, "#Choice6", Item);
+	
+	SetMenuExitButton(menu, true);
+	DisplayMenu(menu, id, MENU_TIME_FOREVER);
+	
+	return Plugin_Handled;
+}
+
+public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
+{
+	if (action == MenuAction_Select) 
+    {
+		new String:info[32];
+        
+        GetMenuItem(menu, param2, info, sizeof(info));
+		
+		//STR
+		if (strcmp(info,"#Choice1") == 0) 
+        {
+			if(g_sp[param1] >= 1)
+			{
+				g_str[param1] += 1
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccuess",LANG_SERVER,"StrName",LANG_SERVER,"g_sp[param1]")
+				MenuShow_SkillMenu(param1);
+			}
+			else
+			{
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPFailed",LANG_SERVER)
+			}
+		}
+		
+		//DEX
+		if (strcmp(info,"#Choice2") == 0) 
+        {
+			if(g_sp[param1] >= 1)
+			{
+				g_dex[param1] += 1
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccuess",LANG_SERVER,"DexName",LANG_SERVER,"g_sp[param1]")
+				MenuShow_SkillMenu(param1);
+			}
+			else
+			{
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPFailed",LANG_SERVER)
+			}
+		}
+		
+		//INT
+		if (strcmp(info,"#Choice3") == 0) 
+        {
+			if(g_sp[param1] >= 1)
+			{
+				g_int[param1] += 1
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccuess",LANG_SERVER,"IntName",LANG_SERVER,"g_sp[param1]")
+				MenuShow_SkillMenu(param1);
+			}
+			else
+			{
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPFailed",LANG_SERVER)
+			}
+		}
+		
+		//HEA
+		if (strcmp(info,"#Choice4") == 0) 
+        {
+			if(g_sp[param1] >= 1)
+			{
+				g_int[param1] += 1
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccuess",LANG_SERVER,"HeaName",LANG_SERVER,"g_sp[param1]")
+				MenuShow_SkillMenu(param1);
+			}
+			else
+			{
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPFailed",LANG_SERVER)
+			}
+		}
+		
+		//END
+		if (strcmp(info,"#Choice5") == 0) 
+        {
+			if(g_sp[param1] >= 1)
+			{
+				g_end[param1] += 1
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccuess",LANG_SERVER,"EndName",LANG_SERVER,"g_sp[param1]")
+				MenuShow_SkillMenu(param1);
+			}
+			else
+			{
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPFailed",LANG_SERVER)
+			}
+		}
+		
+		//LUC
+		if (strcmp(info,"#Choice6") == 0) 
+        {
+			if(g_sp[param1] >= 1)
+			{
+				g_luc[param1] += 1
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccuess",LANG_SERVER,"LucName",LANG_SERVER,"g_sp[param1]")
+				MenuShow_SkillMenu(param1);
+			}
+			else
+			{
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPFailed",LANG_SERVER)
+			}
+		}
+	}
 }
 
 /*
