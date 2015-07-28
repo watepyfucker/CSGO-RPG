@@ -274,7 +274,7 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 	{
 		g_lv[client] ++
 		g_xp[client] -= NEXTLVXP(client)
-		g_sp += GetConVarInt(g_lvup_get_sp)
+		g_sp[client] += GetConVarInt(g_lvup_get_sp)
 		PrintToChat(client,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER, g_lv[client]);
 	}
 	
