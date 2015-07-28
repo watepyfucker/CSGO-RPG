@@ -16,6 +16,7 @@ log:
 #include <sdktools>
 #include <adminmenu>
 #include <cstrike>
+#include <sdkhooks>
 
 #define MAXPLAYER 65
 #define NEXTLVXP(%1) (GetConVarInt(g_lvup_need_xp) * g_lv[%1])
@@ -133,7 +134,7 @@ public EventsInit()
 
 public CvarsInit()
 {
-	g_AutoSaveTime	=			CreateConVar("rpg_autosavetime", "5.0", "多久存一次档");
+	g_AutoSaveTime	=			CreateConVar("rpg_autosavetime", "30.0", "多久存一次档");
 	g_RespawnTime_CT = 		CreateConVar("rpg_respawntime_ct", "60", "CT死亡后多久复活");
 	g_lvup_need_xp =		    CreateConVar("rpg_xp_lvup", "100", "升级所需经验值(基础量)");
 	g_kill_T_xp =			    CreateConVar("rpg_kill_t_get_xp", "10", "杀死T获得的经验(基础量)");
@@ -150,7 +151,7 @@ public CvarsInit()
 	g_str_effect_damage = 				CreateConVar("rpg_str_effect_damage", "0.25", "力量增加的伤害")
 	g_end_reduce_damage = 				CreateConVar("rpg_end_reduce_damage", "0.01", "耐力减伤倍数")
 	g_hea_add_health = 					CreateConVar("rpg_hea_add_health", "10", "生命增加的最大值")
-	g_dex_effect_speed = 				CreateConVar("rpg_dex_effect_speed","0.01", "敏捷增加的速度")
+	g_dex_effect_speed = 				CreateConVar("rpg_dex_effect_speed","0.002", "敏捷增加的速度")
 	g_int_effect_MP = 					CreateConVar("rpg_int_effect_MP", "1000", "智力增加的MP上限及恢复速度")
 	
 	g_base_mana = 				CreateConVar("rpg_base_mana", "10000", "基础魔法值")
@@ -197,6 +198,7 @@ public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroad
 public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	if(GetClientTeam(client) == CS_TEAM_CT)
 	{
 		g_Player_RespawnTime[client] = -1
@@ -208,6 +210,7 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 		GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue") * (1.0 + g_dex[client] * GetConVarFloat(g_dex_effect_speed))); 
 		
 		PrintToChat(client, "speed:%f", GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue"))
+		
 	}
 	return Plugin_Continue;
 }
@@ -215,6 +218,7 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 //玩家进入服务器
 public OnClientPutInServer(client)
 {
+	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	if(!IsFakeClient(client))
 	{
 		rpg_Reset_Player_Vars(client)
@@ -240,6 +244,22 @@ public OnClientDisconnect(client)
 			g_PlayerThinkTimer[client] = INVALID_HANDLE;
 		}
 	}
+}
+
+//设置伤害用(BOT也适用噢)
+public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
+{
+	new Float:dmg = damage;
+	new Float:strb = GetConVarFloat(g_str_effect_damage);
+	new Float:endb = GetConVarFloat(g_end_reduce_damage);
+	new Float:dmgout = dmg + (g_str[attacker] * strb);
+	new Float:rdmg;
+	if(g_end[victim] > 0)
+		rdmg = dmgout - dmgout / (g_end[victim]*endb);
+	else
+		rdmg = dmgout;
+	damage = rdmg;
+	return Plugin_Changed;
 }
 
 //玩家伤害
@@ -301,7 +321,7 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 		PrintToChat(client,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER, g_lv[client]);
 	}
 	
-	if(g_Player_RespawnTime[client] > 0)
+	if(g_Player_RespawnTime[client] > 0 && g_AliveTeam > 0)
 	{
 		g_Player_RespawnTime[client] --
 		PrintHintText(client, "<font color='#66ccff'>[RPGMOD]</font><font color='#66ff00'>%T</font>", "Dead_CT",LANG_SERVER, g_Player_RespawnTime[client])
