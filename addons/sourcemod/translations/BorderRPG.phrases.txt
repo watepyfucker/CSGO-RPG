@@ -102,6 +102,12 @@
 		"chi"			"成功增加%s!现在你还剩下 %d 属性点"
 	}
 	
+	"UseSpSkillMax"
+	{
+		"en"			"This skill fucking maxed"
+		"chi"		"此技能已满"
+	}
+	
 	"UseSPFailed"
 	{
 		"en"			"You must have enough SkillPoint"

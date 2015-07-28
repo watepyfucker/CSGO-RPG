@@ -39,6 +39,7 @@ new g_luc[MAXPLAYER]				//幸运
 
 new g_money[MAXPLAYER]				//金钱
 new g_job[MAXPLAYER]				//职业
+new g_mana[MAXPLAYER]				//魔法值
 
 //Save
 new Handle:g_Rpg_Save				//Save
@@ -62,7 +63,13 @@ new Handle:g_int_max						//智力最大值
 new Handle:g_hea_max						//生命最大值
 new Handle:g_end_max						//耐力最大值
 new Handle:g_luc_max						//幸运最大值
+new Handle:g_str_effect_damage		//力量增加的伤害
+new Handle:g_dex_effect_speed			//敏捷增加的速度
+new Handle:g_hea_add_health				//生命增加的最大值
+new Handle:g_end_reduce_damage		//耐力减伤倍数
+new Handle:g_int_effect_MP				//智力增加的MP上限及恢复速度(增加每秒恢复量 = 增加MP上限/100)
 
+new Handle:g_base_mana						//基础魔法值
 //Timers
 new Handle:g_PlayerThinkTimer[MAXPLAYER]	//Think
 new Handle:g_PlayerAutoSaveTimer					//Autosave
@@ -126,7 +133,7 @@ public EventsInit()
 
 public CvarsInit()
 {
-	g_AutoSaveTime	=			CreateConVar("rpg_autosavetime", "30.0", "多久存一次档");
+	g_AutoSaveTime	=			CreateConVar("rpg_autosavetime", "5.0", "多久存一次档");
 	g_RespawnTime_CT = 		CreateConVar("rpg_respawntime_ct", "60", "CT死亡后多久复活");
 	g_lvup_need_xp =		    CreateConVar("rpg_xp_lvup", "100", "升级所需经验值(基础量)");
 	g_kill_T_xp =			    CreateConVar("rpg_kill_t_get_xp", "10", "杀死T获得的经验(基础量)");
@@ -139,6 +146,14 @@ public CvarsInit()
 	g_hea_max = 					CreateConVar("rpg_hea_max", "2000", "生命最大值")
 	g_end_max = 					CreateConVar("rpg_end_max", "2000", "耐力最大值")
 	g_luc_max = 					CreateConVar("rpg_luc_max", "200", "幸运最大值")
+	
+	g_str_effect_damage = 				CreateConVar("rpg_str_effect_damage", "0.25", "力量增加的伤害")
+	g_end_reduce_damage = 				CreateConVar("rpg_end_reduce_damage", "0.01", "耐力减伤倍数")
+	g_hea_add_health = 					CreateConVar("rpg_hea_add_health", "10", "生命增加的最大值")
+	g_dex_effect_speed = 				CreateConVar("rpg_dex_effect_speed","0.01", "敏捷增加的速度")
+	g_int_effect_MP = 					CreateConVar("rpg_int_effect_MP", "1000", "智力增加的MP上限及恢复速度")
+	
+	g_base_mana = 				CreateConVar("rpg_base_mana", "10000", "基础魔法值")
 }
 
 public CommandInit()
@@ -186,6 +201,13 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 	{
 		g_Player_RespawnTime[client] = -1
 		g_AliveTeam++
+		
+		//设置玩家属性
+		SetEntityHealth(client, 100 + GetConVarInt(g_hea_add_health) * g_hea[client] )
+		SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 
+		GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue") * (1.0 + g_dex[client] * GetConVarFloat(g_dex_effect_speed))); 
+		
+		PrintToChat(client, "speed:%f", GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue"))
 	}
 	return Plugin_Continue;
 }
@@ -296,11 +318,8 @@ public Action:Timer_PlayerAutoSave(Handle:Timer)
 {
 	for(new i = 1; i < GetMaxClients() ; i++)
 	{
-		if(!IsClientConnected(i) || IsFakeClient(i))
-			continue;
-		
-		rpg_Client_Save_Data(i)
-		PrintToChatAll("%d", i)
+		if(IsClientConnected(i) && !IsFakeClient(i))
+			rpg_Client_Save_Data(i)
 	}
 }
 
@@ -444,10 +463,16 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		for(new i = 0; i < 6 ; i ++)
 			Format(Skill_Name[i], sizeof(Skill_Name), "%T", Skill_LANG_NAME[i], LANG_SERVER)
 		
-		g_sp[param1] --
+		
 		//STR
 		if (!strcmp(info,"#Choice1")) 
         {
+			if(g_str[param1] >= GetConVarInt(g_str_max)) 
+			{
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSpSkillMax",LANG_SERVER)
+				return;
+			}
+			g_sp[param1] --
 			g_str[param1] += 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[0], g_sp[param1])
 			MenuShow_SkillMenu(param1);
@@ -456,6 +481,12 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		//DEX
 		else if (!strcmp(info,"#Choice2")) 
         {
+			if(g_dex[param1] >= GetConVarInt(g_dex_max)) 
+			{
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSpSkillMax",LANG_SERVER)
+				return;
+			}
+			g_sp[param1] --
 			g_dex[param1] += 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[1], g_sp[param1])
 			MenuShow_SkillMenu(param1);
@@ -464,6 +495,12 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		//INT
 		else if (!strcmp(info,"#Choice3")) 
         {
+			if(g_int[param1] >= GetConVarInt(g_int_max)) 
+			{
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSpSkillMax",LANG_SERVER)
+				return;
+			}
+			g_sp[param1] --
 			g_int[param1] += 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[2], g_sp[param1])
 			MenuShow_SkillMenu(param1);
@@ -472,6 +509,12 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		//HEA
 		else if (!strcmp(info,"#Choice4")) 
 		{
+			if(g_hea[param1] >= GetConVarInt(g_hea_max)) 
+			{
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSpSkillMax",LANG_SERVER)
+				return;
+			}
+			g_sp[param1] --
 			g_hea[param1] += 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[3], g_sp[param1])
 			MenuShow_SkillMenu(param1);
@@ -480,6 +523,12 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		//END
 		else if (!strcmp(info,"#Choice5")) 
         {
+			if(g_end[param1] >= GetConVarInt(g_end_max)) 
+			{
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSpSkillMax",LANG_SERVER)
+				return;
+			}
+			g_sp[param1] --
 			g_end[param1] += 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[4], g_sp[param1])
 			MenuShow_SkillMenu(param1);
@@ -488,6 +537,12 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		//LUC
 		else if (!strcmp(info,"#Choice6")) 
         {
+			if(g_luc[param1] >= GetConVarInt(g_luc_max)) 
+			{
+				PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSpSkillMax",LANG_SERVER)
+				return;
+			}
+			g_sp[param1] --
 			g_luc[param1] += 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[5], g_sp[param1])
 			MenuShow_SkillMenu(param1);
