@@ -241,19 +241,21 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 	new teamA = GetClientTeam(victim);
 	new teamB = GetClientTeam(killer);
 	
-	if(teamA == CS_TEAM_CT && IsFakeClient(killer))
+	//CT被杀
+	if(teamA == CS_TEAM_CT && !IsFakeClient(victim))
 	{
 		g_AliveTeam--;
 		g_Player_RespawnTime[victim] = GetConVarInt(g_RespawnTime_CT)
 	}
 	
+	//CT杀T
 	if(teamB == CS_TEAM_CT && teamA == CS_TEAM_T && !IsFakeClient(killer))
 	{
 		new GetXp = KILL_T_XP
 		new GetMoney = KILL_T_MONEY
 		g_xp[killer] += GetXp
 		g_money[killer] += GetMoney
-		PrintToChat(killer,"\x01 \x03[RPGmod]\x02%T", "Kill_T_Get_Text", GetXp, GetMoney);
+		PrintToChat(killer,"\x01 \x03[RPGmod]\x02%T", "Kill_T_Get_Text", LANG_SERVER, GetXp, GetMoney);
 	}
 
 	return Plugin_Continue;
