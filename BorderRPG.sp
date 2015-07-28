@@ -184,7 +184,7 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	if(GetClientTeam(client) == CS_TEAM_CT)
 	{
-		g_RespawnTime_CT[client] = -1
+		g_Player_RespawnTime[client] = -1
 		g_AliveTeam++
 	}
 	return Plugin_Continue;
