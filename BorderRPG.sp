@@ -247,7 +247,7 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 		g_Player_RespawnTime[victim] = GetConVarInt(g_RespawnTime_CT)
 	}
 	
-	if(teamB == CS_TEAM_CT && teamA == CS_TEAM_T && IsFakeClient(killer))
+	if(teamB == CS_TEAM_CT && teamA == CS_TEAM_T && !IsFakeClient(killer))
 	{
 		new GetXp = KILL_T_XP
 		new GetMoney = KILL_T_MONEY
@@ -336,7 +336,7 @@ public Action:Command_SaveUserData(client, args)
 //Button
 public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)
 {
-	if(IsFakeClient(id))
+	if(IsFakeClient(client))
 		return Plugin_Continue
 	
 	if (buttons & IN_SPEED)
