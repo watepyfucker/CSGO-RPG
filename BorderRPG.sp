@@ -126,7 +126,7 @@ public EventsInit()
 
 public CvarsInit()
 {
-	g_AutoSaveTime	=			CreateConVar("rpg_autosavetime", "60.0", "多久存一次档");
+	g_AutoSaveTime	=			CreateConVar("rpg_autosavetime", "30.0", "多久存一次档");
 	g_RespawnTime_CT = 		CreateConVar("rpg_respawntime_ct", "60", "CT死亡后多久复活");
 	g_lvup_need_xp =		    CreateConVar("rpg_xp_lvup", "100", "升级所需经验值(基础量)");
 	g_kill_T_xp =			    CreateConVar("rpg_kill_t_get_xp", "10", "杀死T获得的经验(基础量)");
@@ -294,10 +294,13 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 
 public Action:Timer_PlayerAutoSave(Handle:Timer)
 {
-	for(new i = 1; i < MAXPLAYER ; i++)
+	for(new i = 1; i < GetMaxClients() ; i++)
 	{
-		if(!IsFakeClient(i) && IsClientConnected(i))
-			rpg_Client_Save_Data(i)
+		if(!IsClientConnected(i) || IsFakeClient(i))
+			continue;
+		
+		rpg_Client_Save_Data(i)
+		PrintToChatAll("%d", i)
 	}
 }
 
