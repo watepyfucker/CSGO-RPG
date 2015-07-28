@@ -113,4 +113,11 @@
 		"en"			"UPLEVEL!Now you lv:%d"
 		"chi"			"升级了!现在你等级是:%d"
 	}
+	
+	"Kill_T_Get_Text"
+	{
+		"en"			"You killed an enemy, get %d xp & %d money"
+		"chi"		"你杀死了一个敌人, 得到了%d经验值和%d金钱"
+	}
+}
 }

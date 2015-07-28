@@ -35,7 +35,7 @@ new g_dex[MAXPLAYER]				//敏捷
 new g_int[MAXPLAYER]				//智力
 new g_hea[MAXPLAYER]				//生命
 new g_end[MAXPLAYER]				//耐力
-new g_luc[MAXPLAYER]				//运气
+new g_luc[MAXPLAYER]				//幸运
 
 new g_money[MAXPLAYER]				//金钱
 new g_job[MAXPLAYER]				//职业
@@ -49,14 +49,23 @@ new g_Player_RespawnTime[MAXPLAYER]	//复活时间
 new g_AliveTeam									//CT存活
 
 //Convars
+new Handle:g_AutoSaveTime				//自动储存的时间
 new Handle:g_RespawnTime_CT				//CT复活时间
 new Handle:g_lvup_need_xp				//升级需要的经验值(基础量)
 new Handle:g_kill_T_xp						//杀死T获得的经验(基础量)
 new Handle:g_kill_T_money				//杀死T获得的金钱(基础量)
 new Handle:g_lvup_get_sp					//升级获得的技能点
 
+new Handle:g_str_max						//力量最大值
+new Handle:g_dex_max						//敏捷最大值
+new Handle:g_int_max						//智力最大值
+new Handle:g_hea_max						//生命最大值
+new Handle:g_end_max						//耐力最大值
+new Handle:g_luc_max						//幸运最大值
+
 //Timers
 new Handle:g_PlayerThinkTimer[MAXPLAYER]	//Think
+new Handle:g_PlayerAutoSaveTimer					//Autosave
 
 //Mod info
 public Plugin:myinfo=
@@ -96,7 +105,7 @@ public OnPluginStart()
 public FileDataInit()
 {
 	g_Rpg_Save = CreateKeyValues("BorderRPG Save");
-	BuildPath(Path_SM, g_Save_Path, 184, "data/BorderRPG_Save.txt");
+	BuildPath(Path_SM, g_Save_Path, 184, "data/BorderRPG_Save.ini");
 	
 	if (FileExists(g_Save_Path))
 		FileToKeyValues(g_Rpg_Save, g_Save_Path);
@@ -117,11 +126,19 @@ public EventsInit()
 
 public CvarsInit()
 {
+	g_AutoSaveTime	=			CreateConVar("rpg_autosavetime", "60.0", "多久存一次档");
 	g_RespawnTime_CT = 		CreateConVar("rpg_respawntime_ct", "60", "CT死亡后多久复活");
 	g_lvup_need_xp =		    CreateConVar("rpg_xp_lvup", "100", "升级所需经验值(基础量)");
 	g_kill_T_xp =			    CreateConVar("rpg_kill_t_get_xp", "10", "杀死T获得的经验(基础量)");
 	g_kill_T_money = 			CreateConVar("rpg_kill_t_get_money", "10", "杀死T获得的金钱(基础量)");
 	g_lvup_get_sp = 			CreateConVar("rpg_get_sp_lvup", "5", "升级获得的技能点")
+	
+	g_str_max = 					CreateConVar("rpg_str_max", "2000", "力量最大值")
+	g_int_max = 					CreateConVar("rpg_int_max", "2000", "智力最大值")
+	g_dex_max = 					CreateConVar("rpg_dex_max", "2000", "敏捷最大值")
+	g_hea_max = 					CreateConVar("rpg_hea_max", "2000", "生命最大值")
+	g_end_max = 					CreateConVar("rpg_end_max", "2000", "耐力最大值")
+	g_luc_max = 					CreateConVar("rpg_luc_max", "200", "幸运最大值")
 }
 
 public CommandInit()
@@ -139,6 +156,18 @@ public CommandInit()
 ===================================
 */
 
+//地图开始
+public OnMapStart()
+{
+	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
+}
+
+public OnMapEnd()
+{
+	KillTimer(g_PlayerAutoSaveTimer)
+	g_PlayerAutoSaveTimer = INVALID_HANDLE
+}
+
 //回合开始
 public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroadcast)
 {
@@ -152,14 +181,16 @@ public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroad
 //玩家复活
 public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dontBroadcast)
 {
-	// new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	g_AliveTeam++
-	//setbp
-	
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	if(GetClientTeam(client) == CS_TEAM_CT)
+	{
+		g_RespawnTime_CT[client] = -1
+		g_AliveTeam++
+	}
 	return Plugin_Continue;
 }
 
-//玩家连接
+//玩家进入服务器
 public OnClientPutInServer(client)
 {
 	if(!IsFakeClient(client))
@@ -168,6 +199,12 @@ public OnClientPutInServer(client)
 		rpg_Client_Load_Data(client)
 		g_PlayerThinkTimer[client] = CreateTimer(1.0, Timer_PlayerThink, client, TIMER_REPEAT);
 	}
+}
+
+//玩家连接
+public OnClientConnected(client)
+{
+	rpg_Reset_Player_Vars(client)
 }
 
 //玩家断线
@@ -204,19 +241,19 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 	new teamA = GetClientTeam(victim);
 	new teamB = GetClientTeam(killer);
 	
-	if(teamA == teamB || teamB == CS_TEAM_T || IsFakeClient(killer))
-		return Plugin_Continue
-	
-	if(teamA == CS_TEAM_CT)
+	if(teamA == CS_TEAM_CT && IsFakeClient(killer))
 	{
 		g_AliveTeam--;
 		g_Player_RespawnTime[victim] = GetConVarInt(g_RespawnTime_CT)
 	}
 	
-	if(teamB == CS_TEAM_CT && teamA == CS_TEAM_T)
+	if(teamB == CS_TEAM_CT && teamA == CS_TEAM_T && IsFakeClient(killer))
 	{
-		g_xp[killer] += KILL_T_XP
-		PrintToChat(killer,"\x01 \x03[RPGmod]\x02%d/%i", g_xp[killer],NEXTLVXP(killer));
+		new GetXp = KILL_T_XP
+		new GetMoney = KILL_T_MONEY
+		g_xp[killer] += GetXp
+		g_money[killer] += GetMoney
+		PrintToChat(killer,"\x01 \x03[RPGmod]\x02%T", "Kill_T_Get_Text", GetXp, GetMoney);
 	}
 
 	return Plugin_Continue;
@@ -232,15 +269,13 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 //Player Think
 public Action:Timer_PlayerThink(Handle:Timer, any:client)
 {
+	//↓ 这我不是判定了吗
 	if(g_xp[client] >= NEXTLVXP(client))
 	{
-		//一开始你那个就直接 -= 了,如果=NEXTLVXP就直接负了
-		if(g_xp[client] > NEXTLVXP(client))
-			g_xp[client] -= NEXTLVXP(client)
-		else g_xp[client] = 0
 		g_lv[client] ++
-		g_sp[client] += 5
-		PrintToChat(client,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER,g_lv[client]);
+		g_xp[client] -= NEXTLVXP(client)
+		g_sp += GetConVarInt(g_lvup_get_sp)
+		PrintToChat(client,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER, g_lv[client]);
 	}
 	
 	if(g_Player_RespawnTime[client] > 0)
@@ -253,6 +288,15 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 	{
 		g_Player_RespawnTime[client] = -1
 		CS_RespawnPlayer(client)
+	}
+}
+
+public Action:Timer_PlayerAutoSave(Handle:Timer)
+{
+	for(new i = 1; i < MAXPLAYER ; i++)
+	{
+		if(!IsFakeClient(i) && IsClientConnected(i))
+			rpg_Client_Save_Data(i)
 	}
 }
 
@@ -292,12 +336,12 @@ public Action:Command_SaveUserData(client, args)
 //Button
 public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)
 {
+	if(IsFakeClient(id))
+		return Plugin_Continue
+	
 	if (buttons & IN_SPEED)
-	{
-		if(!IsFakeClient(client))
-			MenuShow_MainMenu(client)
-		//SHOWMENU
-	}
+		MenuShow_MainMenu(client)
+	
 	return Plugin_Continue
 }
 /*
@@ -311,6 +355,9 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 //Main Menu
 public Action:MenuShow_MainMenu(id)
 {
+	if(IsFakeClient(id))
+		return Plugin_Handled;
+	
 	new Handle:menu = CreateMenu(MenuHandler_MainMenu);
 	decl String:MenuTitle[200]
 	Format(MenuTitle, sizeof(MenuTitle), "%T ", "MainMenu_Title", LANG_SERVER, 
@@ -345,6 +392,9 @@ public MenuHandler_MainMenu(Handle:menu, MenuAction:action, param1, param2)
 //Skill Menu
 public Action:MenuShow_SkillMenu(id)
 {
+	if(IsFakeClient(id))
+		return Plugin_Handled;
+	
 	new Handle:menu = CreateMenu(MenuHandler_SkillMenu);
 	decl String:MenuTitle[200]
 	Format(MenuTitle, sizeof(MenuTitle), "%T ", "SkillMenu_Title", LANG_SERVER, g_sp[id])
@@ -353,9 +403,9 @@ public Action:MenuShow_SkillMenu(id)
 	
 	
 	decl String:Item[64]
-	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"StrName",LANG_SERVER,g_str[id]);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"StrName",LANG_SERVER, g_str[id]);
 	AddMenuItem(menu, "#Choice1", Item);
-	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"DexName",LANG_SERVER,g_dex[id]);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"DexName",LANG_SERVER, g_dex[id]);
 	AddMenuItem(menu, "#Choice2", Item);
 	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"IntName",LANG_SERVER,g_int[id]);
 	AddMenuItem(menu, "#Choice3", Item);
@@ -394,7 +444,6 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		if (!strcmp(info,"#Choice1")) 
         {
 			g_str[param1] += 1
-			g_sp[param1] -= 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[0], g_sp[param1])
 			MenuShow_SkillMenu(param1);
 		}
@@ -403,7 +452,6 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		else if (!strcmp(info,"#Choice2")) 
         {
 			g_dex[param1] += 1
-			g_sp[param1] -= 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[1], g_sp[param1])
 			MenuShow_SkillMenu(param1);
 		}
@@ -412,7 +460,6 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		else if (!strcmp(info,"#Choice3")) 
         {
 			g_int[param1] += 1
-			g_sp[param1] -= 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[2], g_sp[param1])
 			MenuShow_SkillMenu(param1);
 		}
@@ -421,7 +468,6 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		else if (!strcmp(info,"#Choice4")) 
 		{
 			g_hea[param1] += 1
-			g_sp[param1] -= 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[3], g_sp[param1])
 			MenuShow_SkillMenu(param1);
 		}
@@ -430,7 +476,6 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		else if (!strcmp(info,"#Choice5")) 
         {
 			g_end[param1] += 1
-			g_sp[param1] -= 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[4], g_sp[param1])
 			MenuShow_SkillMenu(param1);
 		}
@@ -439,10 +484,11 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		else if (!strcmp(info,"#Choice6")) 
         {
 			g_luc[param1] += 1
-			g_sp[param1] -= 1
 			PrintHintText(param1,"<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","UseSPSuccess",LANG_SERVER, Skill_Name[5], g_sp[param1])
 			MenuShow_SkillMenu(param1);
 		}
+		
+		g_sp[param1] -- //←干嘛把这个删了 反正所有技能点都是-1啊
 	}
 }
 
@@ -489,8 +535,9 @@ public rpg_Client_Load_Data(client)
 	g_hea[client] = KvGetNum(g_Rpg_Save, "HEA", 0); g_int[client] = KvGetNum(g_Rpg_Save, "INT", 0)
 	g_end[client] = KvGetNum(g_Rpg_Save, "END", 0); g_luc[client] = KvGetNum(g_Rpg_Save, "LUC", 0);
 	
+	PrintToConsole(client, "[RPGmod]%T", "Player_Data_Loaded", LANG_SERVER)
 	KvGoBack(g_Rpg_Save)
-	
+
 }
 
 //重置玩家变量
