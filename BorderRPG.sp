@@ -271,11 +271,10 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 //Player Think
 public Action:Timer_PlayerThink(Handle:Timer, any:client)
 {
-	//↓ 这我不是判定了吗
 	if(g_xp[client] >= NEXTLVXP(client))
 	{
-		g_lv[client] ++
 		g_xp[client] -= NEXTLVXP(client)
+		g_lv[client] ++
 		g_sp[client] += GetConVarInt(g_lvup_get_sp)
 		PrintToChat(client,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER, g_lv[client]);
 	}
