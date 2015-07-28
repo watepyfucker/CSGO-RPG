@@ -441,6 +441,7 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		for(new i = 0; i < 6 ; i ++)
 			Format(Skill_Name[i], sizeof(Skill_Name), "%T", Skill_LANG_NAME[i], LANG_SERVER)
 		
+		g_sp[param1] --
 		//STR
 		if (!strcmp(info,"#Choice1")) 
         {
@@ -489,7 +490,6 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 			MenuShow_SkillMenu(param1);
 		}
 		
-		g_sp[param1] -- //←干嘛把这个删了 反正所有技能点都是-1啊
 	}
 }
 
