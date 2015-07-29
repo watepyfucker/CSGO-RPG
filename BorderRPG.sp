@@ -276,10 +276,15 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	if(!IsClientConnected(attacker) || attacker < 0)
 		return Plugin_Continue
 	
+	new Float:dmg = damage;
+	new Float:strb = GetConVarFloat(g_str_effect_damage);
+	new Float:dmgout = dmg + (g_str[attacker] * strb);
+	new Float:rdmg;
+	
 	if(g_luc[victim] > 1)
 	{
 		new dodgec = GetRandomInt(0,100);
-		new Float:dodge = g_luc[victim] * GetConVarFloat(g_luc_dodge_chance);
+		new Float:dodge = g_luc[victim] * GetConVarFloat(g_luc_dodge_chance) * 100
 	
 		if(dodgec <= dodge)
 		{
@@ -287,23 +292,9 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 			PrintHintText(victim, "<font color='#FF6600'>%T</font>", "Dodge",LANG_SERVER)
 			return Plugin_Changed
 		}
-	}
-	
-	new Float:dmg = damage;
-	new Float:strb = GetConVarFloat(g_str_effect_damage);
-	new Float:endb = GetConVarFloat(g_end_reduce_damage);
-	new Float:dmgout = dmg + (g_str[attacker] * strb);
-	new Float:rdmg;
-	
-	if(g_end[victim] > 0)
-		rdmg = dmgout - dmgout / (g_end[victim]*endb);
-	else
-		rdmg = dmgout;
-	
-	if(g_luc[attacker] > 1)
-	{
+		
 		new critc = GetRandomInt(0,100);
-		new Float:crit = g_luc[attacker] * GetConVarFloat(g_luc_crit_chance);
+		new Float:crit = g_luc[attacker] * GetConVarFloat(g_luc_crit_chance) * 100
 		if(critc <= crit)
 		{
 			g_IsCrit[attacker] = true;
@@ -311,6 +302,8 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 		}
 	}
 	
+	new Float:endb = GetConVarFloat(g_end_reduce_damage);
+	rdmg = dmgout * (1.0 - g_end[victim] * endb)
 	damage = rdmg;
 	return Plugin_Changed;
 }
