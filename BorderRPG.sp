@@ -249,6 +249,9 @@ public OnClientDisconnect(client)
 //设置伤害用(BOT也适用噢)
 public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 {
+	if(!IsClientConnected(attacker))
+		return Plugin_Continue
+	
 	new Float:dmg = damage;
 	new Float:strb = GetConVarFloat(g_str_effect_damage);
 	new Float:endb = GetConVarFloat(g_end_reduce_damage);
@@ -446,17 +449,17 @@ public Action:MenuShow_SkillMenu(id)
 	
 	
 	decl String:Item[64]
-	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"StrName",LANG_SERVER, g_str[id]);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"StrName",LANG_SERVER, g_str[id], GetConVarInt(g_str_max));
 	AddMenuItem(menu, "#Choice1", Item);
-	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"DexName",LANG_SERVER, g_dex[id]);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"DexName",LANG_SERVER, g_dex[id], GetConVarInt(g_dex_max));
 	AddMenuItem(menu, "#Choice2", Item);
-	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"IntName",LANG_SERVER,g_int[id]);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"IntName",LANG_SERVER,g_int[id], GetConVarInt(g_int_max));
 	AddMenuItem(menu, "#Choice3", Item);
-	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"HeaName",LANG_SERVER,g_hea[id]);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"HeaName",LANG_SERVER,g_hea[id], GetConVarInt(g_hea_max));
 	AddMenuItem(menu, "#Choice4", Item);
-	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"EndName",LANG_SERVER,g_end[id]);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"EndName",LANG_SERVER,g_end[id], GetConVarInt(g_end_max));
 	AddMenuItem(menu, "#Choice5", Item);
-	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"LucName",LANG_SERVER,g_luc[id]);
+	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"LucName",LANG_SERVER,g_luc[id], GetConVarInt(g_luc_max));
 	AddMenuItem(menu, "#Choice6", Item);
 	
 	SetMenuExitButton(menu, true);

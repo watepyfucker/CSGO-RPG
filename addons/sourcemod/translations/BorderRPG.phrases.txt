@@ -92,8 +92,8 @@
 	
 	"SkillMenu_AddModule"
 	{
-		"en"			"Add %T: %d"
-		"chi"			"增加 %T: %d"
+		"en"			"Add %T: %d / %d"
+		"chi"			"增加 %T: %d / %d"
 	}
 	
 	"UseSPSuccess"
