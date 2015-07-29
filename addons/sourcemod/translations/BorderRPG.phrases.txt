@@ -12,6 +12,12 @@
 		"chi"			"RPG"
 	}
 	
+	"Dead_CT"
+	{
+		"en"			"You Dead!Please Wait %d sec to Respawn"
+		"chi"			"你跪了! %d 秒后复活"
+	}
+	
 	"Cant_Find_Save_File"
 	{
 		"en"			"Cannot Find The %s File, it will be create again"
@@ -30,16 +36,10 @@
 		"chi"		"你的资料成功读取！"
 	}
 	
-	"Dead_CT"
-	{
-		"en"			"You Dead!Please Wait %d sec to Respawn"
-		"chi"			"你跪了! %d 秒后复活"
-	}
-	
 	"MainMenu_Title"
 	{
 		"en"			"---[BorderRPG Main Menu]---\nLv.%d Money:$%d Job:%s \nExp:%d/%d  metempsychosis:%d Skillpoint:%d \n Str:%d Agi:%d Hea:%d End:%d Int:%d Luck:%d"
-		"chi"			"---[BorderRPG 主菜单]---\n等级:Lv.%d 金钱:$%d 职业:%s \n经验:%d/%d 转生:%d转 属性点:%d \n力量:%d 敏捷:%d 生命:%d 耐力:%d 智力:%d 运气:%d"
+		"chi"			"---[BorderRPG 主菜单]---\n等级:Lv.%d 金钱:$%d 职业:%s \n经验:%d/%d 转生:%d转 属性点:%d \n力量:%d 敏捷:%d 生命:%d 耐力:%d 智力:%d 幸运:%d"
 	}
 	
 	"SkillMenu_Title"
@@ -87,13 +87,13 @@
 	"LucName"
 	{
 		"en"			"Luck"
-		"chi"			"运气"
+		"chi"			"幸运"
 	}
 	
 	"SkillMenu_AddModule"
 	{
-		"en"			"Add %T: %d / %d"
-		"chi"			"增加 %T: %d / %d"
+		"en"			"Add %T: %d/%d"
+		"chi"			"增加 %T: %d/%d"
 	}
 	
 	"UseSPSuccess"
@@ -123,7 +123,18 @@
 	"Kill_T_Get_Text"
 	{
 		"en"			"You killed an enemy, get %d xp & %d money"
-		"chi"		"你杀死了一个敌人, 得到了%d经验值和%d金钱"
+		"chi"			"你杀死了一个敌人, 得到了%d经验值和%d金钱"
 	}
-}
+	
+	"Dodge"
+	{
+		"en"			"Dodge!"
+		"chi"			"闪避!"
+	}
+	
+	"CRIT"
+	{
+		"en"			"CRIT! -%dHP"
+		"chi"			"暴击! -%dHP"
+	}
 }

@@ -50,6 +50,9 @@ new String:g_Save_Path[185]		//存储路径
 new g_Player_RespawnTime[MAXPLAYER]	//复活时间
 new g_AliveTeam									//CT存活
 
+//Bool
+new bool:g_IsCrit[MAXPLAYER]		//有没有暴击
+
 //Convars
 new Handle:g_AutoSaveTime				//自动储存的时间
 new Handle:g_RespawnTime_CT				//CT复活时间
@@ -57,6 +60,7 @@ new Handle:g_lvup_need_xp				//升级需要的经验值(基础量)
 new Handle:g_kill_T_xp						//杀死T获得的经验(基础量)
 new Handle:g_kill_T_money				//杀死T获得的金钱(基础量)
 new Handle:g_lvup_get_sp					//升级获得的技能点
+new Float:g_RestoreTime[MAXPLAYER]				//生命恢复计时
 
 new Handle:g_str_max						//力量最大值
 new Handle:g_dex_max						//敏捷最大值
@@ -68,7 +72,15 @@ new Handle:g_str_effect_damage		//力量增加的伤害
 new Handle:g_dex_effect_speed			//敏捷增加的速度
 new Handle:g_hea_add_health				//生命增加的最大值
 new Handle:g_end_reduce_damage		//耐力减伤倍数
+new Handle:g_end_restore_time		//耐力恢复生命时间
 new Handle:g_int_effect_MP				//智力增加的MP上限及恢复速度(增加每秒恢复量 = 增加MP上限/100)
+new Handle:g_luc_dodge_chance		//幸运闪避几率
+new Handle:g_luc_crit_chance		//幸运暴击几率
+new Handle:g_luc_drop_chance		//幸运掉宝几率
+
+new Handle:g_crit_multi				//暴击伤害倍数
+new Handle:g_restore_deftime		//生命恢复默认时间
+new Handle:g_restore_point			//每次恢复多少点HP
 
 new Handle:g_base_mana						//基础魔法值
 //Timers
@@ -146,13 +158,21 @@ public CvarsInit()
 	g_dex_max = 					CreateConVar("rpg_dex_max", "2000", "敏捷最大值")
 	g_hea_max = 					CreateConVar("rpg_hea_max", "2000", "生命最大值")
 	g_end_max = 					CreateConVar("rpg_end_max", "2000", "耐力最大值")
-	g_luc_max = 					CreateConVar("rpg_luc_max", "200", "幸运最大值")
+	g_luc_max = 					CreateConVar("rpg_luc_max", "2000", "幸运最大值")
 	
 	g_str_effect_damage = 				CreateConVar("rpg_str_effect_damage", "0.25", "力量增加的伤害")
+	g_end_restore_time = 				CreateConVar("rpg_end_restore_time","0.0025","耐力减少的生命恢复时间")
 	g_end_reduce_damage = 				CreateConVar("rpg_end_reduce_damage", "0.01", "耐力减伤倍数")
 	g_hea_add_health = 					CreateConVar("rpg_hea_add_health", "10", "生命增加的最大值")
 	g_dex_effect_speed = 				CreateConVar("rpg_dex_effect_speed","0.002", "敏捷增加的速度")
 	g_int_effect_MP = 					CreateConVar("rpg_int_effect_MP", "1000", "智力增加的MP上限及恢复速度")
+	g_luc_dodge_chance = 				CreateConVar("rpg_luc_dodge_chance","0.025","幸运增加的躲避几率")
+	g_luc_crit_chance = 				CreateConVar("rpg_luc_crit_chance","0.025","幸运增加的暴击几率")
+	g_luc_drop_chance = 				CreateConVar("rpg_luc_drop_chance","0.013","幸运增加的掉宝几率")
+	
+	g_crit_multi = 					CreateConVar("rpg_crit_multi","2.00","暴击伤害倍数")
+	g_restore_deftime = 			CreateConVar("rpg_restore_deftime","5.50","生命恢复默认时间")
+	g_restore_point = 				CreateConVar("rpg_restore_point","1","每次恢复多少HP")
 	
 	g_base_mana = 				CreateConVar("rpg_base_mana", "10000", "基础魔法值")
 }
@@ -176,6 +196,11 @@ public CommandInit()
 public OnMapStart()
 {
 	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
+	ServerCommand("exec server.cfg")
+	for(int i = 0;i < 15;i++)
+	{
+		ServerCommand("bot_add_t");
+	}
 }
 
 public OnMapEnd()
@@ -199,6 +224,7 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+	g_RestoreTime[client] = GetConVarFloat(g_restore_deftime);
 	if(GetClientTeam(client) == CS_TEAM_CT)
 	{
 		g_Player_RespawnTime[client] = -1
@@ -249,18 +275,44 @@ public OnClientDisconnect(client)
 //设置伤害用(BOT也适用噢)
 public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 {
-	if(!IsClientConnected(attacker))
+	if(!IsClientConnected(attacker) || attacker < 0)
 		return Plugin_Continue
+	
+	if(g_luc[victim] > 1)
+	{
+		new dodgec = GetRandomInt(0,100);
+		new Float:dodge = g_luc[victim] * GetConVarFloat(g_luc_dodge_chance);
+	
+		if(dodgec <= dodge)
+		{
+			damage = 0.0;
+			PrintHintText(victim, "<font color='#FF6600'>%T</font>", "Dodge",LANG_SERVER)
+			return Plugin_Changed
+		}
+	}
 	
 	new Float:dmg = damage;
 	new Float:strb = GetConVarFloat(g_str_effect_damage);
 	new Float:endb = GetConVarFloat(g_end_reduce_damage);
 	new Float:dmgout = dmg + (g_str[attacker] * strb);
 	new Float:rdmg;
+	
 	if(g_end[victim] > 0)
 		rdmg = dmgout - dmgout / (g_end[victim]*endb);
 	else
 		rdmg = dmgout;
+	
+	if(g_luc[attacker] > 1)
+	{
+		new critc = GetRandomInt(0,100);
+		new Float:crit = g_luc[attacker] * GetConVarFloat(g_luc_crit_chance);
+		if(critc <= crit)
+		{
+			g_IsCrit[attacker] = true;
+			rdmg = rdmg * GetConVarFloat(g_crit_multi);
+		}
+	}
+	
 	damage = rdmg;
 	return Plugin_Changed;
 }
@@ -271,10 +323,16 @@ public Action:Event_PlayerHurt(Handle:event, String:event_name[], bool:dontBroad
 	new attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
 	new damage = GetEventInt(event, "dmg_health");
 	
-	if(!IsClientConnected(attacker) || IsFakeClient(attacker))
+	if(!IsClientConnected(attacker) || IsFakeClient(attacker) || attacker < 0)
 		return Plugin_Continue;
 	
-	PrintHintText(attacker, "<font color='#FF6600'>    -%dHP</font>", damage)
+	if(g_IsCrit[attacker])
+	{
+		g_IsCrit[attacker] = false;
+		PrintHintText(attacker, "<font color='#FF0000'>%T</font>", "CRIT",LANG_SERVER,damage);
+	}
+	else PrintHintText(attacker, "<font color='#FF6600'>    -%dHP</font>", damage);
+	
 	return Plugin_Continue;
 }
 
@@ -324,13 +382,26 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 		PrintToChat(client,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER, g_lv[client]);
 	}
 	
+	if(g_end[client] > 1)
+	{
+		if(g_RestoreTime[client] > 0 && IsPlayerAlive(client))
+		{
+			g_RestoreTime[client] -= g_end[client] * GetConVarFloat(g_end_restore_time)
+		}
+		if(!g_RestoreTime[client] && IsPlayerAlive(client) && GetClientHealth(client) < (100 + GetConVarInt(g_hea_add_health) * g_hea[client]))
+		{
+			g_RestoreTime[client] = GetConVarFloat(g_restore_deftime)
+			SetEntityHealth(client, GetClientHealth(client) + GetConVarInt(g_restore_point))
+		}
+	}
+	
 	if(g_Player_RespawnTime[client] > 0 && g_AliveTeam > 0)
 	{
 		g_Player_RespawnTime[client] --
 		PrintHintText(client, "<font color='#66ccff'>[RPGMOD]</font><font color='#66ff00'>%T</font>", "Dead_CT",LANG_SERVER, g_Player_RespawnTime[client])
 	}
 	
-	if(!g_Player_RespawnTime[client])
+	if(g_Player_RespawnTime[client] <= 0)
 	{
 		g_Player_RespawnTime[client] = -1
 		CS_RespawnPlayer(client)
