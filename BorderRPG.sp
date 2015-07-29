@@ -158,10 +158,10 @@ public CvarsInit()
 	g_dex_max = 					CreateConVar("rpg_dex_max", "2000", "敏捷最大值")
 	g_hea_max = 					CreateConVar("rpg_hea_max", "2000", "生命最大值")
 	g_end_max = 					CreateConVar("rpg_end_max", "2000", "耐力最大值")
-	g_luc_max = 					CreateConVar("rpg_luc_max", "2000", "幸运最大值")
+	g_luc_max = 					CreateConVar("rpg_luc_max", "200", "幸运最大值")
 	
 	g_str_effect_damage = 				CreateConVar("rpg_str_effect_damage", "0.25", "力量增加的伤害")
-	g_end_restore_health = 			CreateConVar("rpg_end_restore_health","0.8","耐力增加的每秒生命恢复")
+	g_end_restore_health = 			CreateConVar("rpg_end_restore_health","0.3","耐力增加的每秒生命恢复")
 	g_end_reduce_damage = 				CreateConVar("rpg_end_reduce_damage", "0.01", "耐力减伤倍数")
 	g_hea_add_health = 					CreateConVar("rpg_hea_add_health", "10", "生命增加的最大值")
 	g_dex_effect_speed = 				CreateConVar("rpg_dex_effect_speed","0.002", "敏捷增加的速度")
@@ -170,7 +170,7 @@ public CvarsInit()
 	g_luc_crit_chance = 					CreateConVar("rpg_luc_crit_chance","0.025","幸运增加的暴击几率")
 	g_luc_drop_chance = 					CreateConVar("rpg_luc_drop_chance","0.013","幸运增加的掉宝几率")
 	
-	g_crit_multi = 							CreateConVar("rpg_crit_multi","2.00","暴击伤害倍数")
+	g_crit_multi = 							CreateConVar("rpg_crit_multi","1.25","暴击伤害倍数")
 	
 	g_base_mana = 							CreateConVar("rpg_base_mana", "10000", "基础魔法值")
 }
@@ -273,7 +273,7 @@ public OnClientDisconnect(client)
 //设置伤害用(BOT也适用噢)
 public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 {
-	if(!IsClientConnected(attacker) || attacker < 0)
+	if(damagetype == DMG_FALL || !IsClientConnected(attacker))
 		return Plugin_Continue
 	
 	new Float:dmg = damage;
@@ -284,8 +284,8 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	if(g_luc[victim] > 1)
 	{
 		new dodgec = GetRandomInt(0,100);
-		new Float:dodge = g_luc[victim] * GetConVarFloat(g_luc_dodge_chance) * 100
-	
+		new Float:dodge = g_luc[victim] * GetConVarFloat(g_luc_dodge_chance)
+		
 		if(dodgec <= dodge)
 		{
 			damage = 0.0;
@@ -294,7 +294,7 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 		}
 		
 		new critc = GetRandomInt(0,100);
-		new Float:crit = g_luc[attacker] * GetConVarFloat(g_luc_crit_chance) * 100
+		new Float:crit = g_luc[attacker] * GetConVarFloat(g_luc_crit_chance)
 		if(critc <= crit)
 		{
 			g_IsCrit[attacker] = true;
@@ -398,7 +398,7 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 		}
 	}
 	
-	if(g_Player_RespawnTime[client] > 0 && g_AliveTeam > 0)
+	if(g_Player_RespawnTime[client] > 0)
 	{
 		g_Player_RespawnTime[client] --
 		PrintHintText(client, "<font color='#66ccff'>[RPGMOD]</font><font color='#66ff00'>%T</font>", "Dead_CT",LANG_SERVER, g_Player_RespawnTime[client])
@@ -658,6 +658,9 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 //存档
 public rpg_Client_Save_Data(client)
 {
+	if(GetClientTeam(client) != CS_TEAM_CT)
+		return;
+	
 	new String:Str_SteamID[32]
 	Format(Str_SteamID, 31, "%d", GetSteamAccountID(client))
 	KvJumpToKey(g_Rpg_Save, Str_SteamID, true);
