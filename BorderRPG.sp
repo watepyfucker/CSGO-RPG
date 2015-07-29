@@ -19,9 +19,11 @@ log:
 #include <sdkhooks>
 
 #define MAXPLAYER 65
+
 #define NEXTLVXP(%1) (GetConVarInt(g_lvup_need_xp) * g_lv[%1])
 #define KILL_T_XP		GetConVarInt(g_kill_T_xp)
 #define KILL_T_MONEY 	GetConVarInt(g_kill_T_money)
+#define MAX_HEALTH(%1)  (100 + GetConVarInt(g_hea_add_health) * g_hea[%1])
 
 new const String:g_job_name[][] = {"无职业", "精灵", "游侠", "医师"}
 
@@ -47,6 +49,7 @@ new Handle:g_Rpg_Save				//Save
 new String:g_Save_Path[185]		//存储路径
 
 //Vars
+new Float:g_Player_Restore_Point[MAXPLAYER]	//下一秒恢复的生命值
 new g_Player_RespawnTime[MAXPLAYER]	//复活时间
 new g_AliveTeam									//CT存活
 
@@ -60,7 +63,6 @@ new Handle:g_lvup_need_xp				//升级需要的经验值(基础量)
 new Handle:g_kill_T_xp						//杀死T获得的经验(基础量)
 new Handle:g_kill_T_money				//杀死T获得的金钱(基础量)
 new Handle:g_lvup_get_sp					//升级获得的技能点
-new Float:g_RestoreTime[MAXPLAYER]				//生命恢复计时
 
 new Handle:g_str_max						//力量最大值
 new Handle:g_dex_max						//敏捷最大值
@@ -72,15 +74,13 @@ new Handle:g_str_effect_damage		//力量增加的伤害
 new Handle:g_dex_effect_speed			//敏捷增加的速度
 new Handle:g_hea_add_health				//生命增加的最大值
 new Handle:g_end_reduce_damage		//耐力减伤倍数
-new Handle:g_end_restore_time		//耐力恢复生命时间
-new Handle:g_int_effect_MP				//智力增加的MP上限及恢复速度(增加每秒恢复量 = 增加MP上限/100)
-new Handle:g_luc_dodge_chance		//幸运闪避几率
-new Handle:g_luc_crit_chance		//幸运暴击几率
-new Handle:g_luc_drop_chance		//幸运掉宝几率
+new Handle:g_end_restore_health		//耐力增加的每秒生命恢复
+new Handle:g_int_effect_mana			//智力增加的MP上限及恢复速度(增加每秒恢复量 = 增加MP上限/100)
+new Handle:g_luc_dodge_chance			//幸运闪避几率
+new Handle:g_luc_crit_chance			//幸运暴击几率
+new Handle:g_luc_drop_chance			//幸运掉宝几率
 
-new Handle:g_crit_multi				//暴击伤害倍数
-new Handle:g_restore_deftime		//生命恢复默认时间
-new Handle:g_restore_point			//每次恢复多少点HP
+new Handle:g_crit_multi					//暴击伤害倍数
 
 new Handle:g_base_mana						//基础魔法值
 //Timers
@@ -161,20 +161,18 @@ public CvarsInit()
 	g_luc_max = 					CreateConVar("rpg_luc_max", "2000", "幸运最大值")
 	
 	g_str_effect_damage = 				CreateConVar("rpg_str_effect_damage", "0.25", "力量增加的伤害")
-	g_end_restore_time = 				CreateConVar("rpg_end_restore_time","0.0025","耐力减少的生命恢复时间")
+	g_end_restore_health = 			CreateConVar("rpg_end_restore_health","0.8","耐力增加的每秒生命恢复")
 	g_end_reduce_damage = 				CreateConVar("rpg_end_reduce_damage", "0.01", "耐力减伤倍数")
 	g_hea_add_health = 					CreateConVar("rpg_hea_add_health", "10", "生命增加的最大值")
 	g_dex_effect_speed = 				CreateConVar("rpg_dex_effect_speed","0.002", "敏捷增加的速度")
-	g_int_effect_MP = 					CreateConVar("rpg_int_effect_MP", "1000", "智力增加的MP上限及恢复速度")
+	g_int_effect_mana = 					CreateConVar("rpg_int_effect_mana", "1000", "智力增加的MP上限及恢复速度")
 	g_luc_dodge_chance = 				CreateConVar("rpg_luc_dodge_chance","0.025","幸运增加的躲避几率")
-	g_luc_crit_chance = 				CreateConVar("rpg_luc_crit_chance","0.025","幸运增加的暴击几率")
-	g_luc_drop_chance = 				CreateConVar("rpg_luc_drop_chance","0.013","幸运增加的掉宝几率")
+	g_luc_crit_chance = 					CreateConVar("rpg_luc_crit_chance","0.025","幸运增加的暴击几率")
+	g_luc_drop_chance = 					CreateConVar("rpg_luc_drop_chance","0.013","幸运增加的掉宝几率")
 	
-	g_crit_multi = 					CreateConVar("rpg_crit_multi","2.00","暴击伤害倍数")
-	g_restore_deftime = 			CreateConVar("rpg_restore_deftime","5.50","生命恢复默认时间")
-	g_restore_point = 				CreateConVar("rpg_restore_point","1","每次恢复多少HP")
+	g_crit_multi = 							CreateConVar("rpg_crit_multi","2.00","暴击伤害倍数")
 	
-	g_base_mana = 				CreateConVar("rpg_base_mana", "10000", "基础魔法值")
+	g_base_mana = 							CreateConVar("rpg_base_mana", "10000", "基础魔法值")
 }
 
 public CommandInit()
@@ -224,14 +222,14 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
-	g_RestoreTime[client] = GetConVarFloat(g_restore_deftime);
 	if(GetClientTeam(client) == CS_TEAM_CT)
 	{
-		g_Player_RespawnTime[client] = -1
-		g_AliveTeam++
+		g_Player_Restore_Point[client] = 0.0;
+		g_Player_RespawnTime[client] = -1;
+		g_AliveTeam++;
 		
 		//设置玩家属性
-		SetEntityHealth(client, 100 + GetConVarInt(g_hea_add_health) * g_hea[client] )
+		SetEntityHealth(client, MAX_HEALTH(client) )
 		SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 
 		GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue") * (1.0 + g_dex[client] * GetConVarFloat(g_dex_effect_speed))); 
 		
@@ -374,6 +372,9 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 //Player Think
 public Action:Timer_PlayerThink(Handle:Timer, any:client)
 {
+	if(IsFakeClient(client))
+		return;
+	
 	if(g_xp[client] >= NEXTLVXP(client))
 	{
 		g_xp[client] -= NEXTLVXP(client)
@@ -382,16 +383,25 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 		PrintToChat(client,"\x01 \x03[RPGmod]\x02%T", "LevelUp",LANG_SERVER, g_lv[client]);
 	}
 	
-	if(g_end[client] > 1)
+	if(g_end[client] >= 1)
 	{
-		if(g_RestoreTime[client] > 0 && IsPlayerAlive(client))
+		if(IsPlayerAlive(client) && GetClientHealth(client) < MAX_HEALTH(client))
 		{
-			g_RestoreTime[client] -= g_end[client] * GetConVarFloat(g_end_restore_time)
-		}
-		if(!g_RestoreTime[client] && IsPlayerAlive(client) && GetClientHealth(client) < (100 + GetConVarInt(g_hea_add_health) * g_hea[client]))
-		{
-			g_RestoreTime[client] = GetConVarFloat(g_restore_deftime)
-			SetEntityHealth(client, GetClientHealth(client) + GetConVarInt(g_restore_point))
+			g_Player_Restore_Point[client] +=  GetConVarFloat(g_end_restore_health) * g_end[client]
+			if(g_Player_Restore_Point[client] >= 1.0)
+			{
+				//恢复以后超过最大值
+				if(GetClientHealth(client) + RoundToFloor(g_Player_Restore_Point[client]) > MAX_HEALTH(client))
+				{
+					SetEntityHealth(client, MAX_HEALTH(client))
+					g_Player_Restore_Point[client] = 0.0;
+				}
+				else
+				{
+					SetEntityHealth(client, GetClientHealth(client) + RoundToFloor(g_Player_Restore_Point[client]))
+					g_Player_Restore_Point[client] -= RoundToFloor(g_Player_Restore_Point[client])
+				}
+			}
 		}
 	}
 	
@@ -401,7 +411,7 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 		PrintHintText(client, "<font color='#66ccff'>[RPGMOD]</font><font color='#66ff00'>%T</font>", "Dead_CT",LANG_SERVER, g_Player_RespawnTime[client])
 	}
 	
-	if(g_Player_RespawnTime[client] <= 0)
+	if(g_Player_RespawnTime[client] == 0)
 	{
 		g_Player_RespawnTime[client] = -1
 		CS_RespawnPlayer(client)
@@ -698,7 +708,7 @@ public rpg_Reset_Player_Vars(id)
 {
 	g_lv[id] = 1; g_xp[id] = 0;g_sp[id] = GetConVarInt(g_lvup_get_sp) * g_lv[id];g_mete[id] = 0; 
 	g_str[id] = 0; g_dex[id] = 0; g_hea[id] = 0;g_int[id] = 0; g_end[id] = 0;g_luc[id] = 0; 
-	g_money[id] = 0; g_job[id] = 0; g_Player_RespawnTime[id] = -1;
+	g_money[id] = 0; g_job[id] = 0; g_Player_RespawnTime[id] = -1; g_Player_Restore_Point[id] = 0.0;
 } 
 
 
