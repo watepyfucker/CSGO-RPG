@@ -26,6 +26,9 @@ log:
 #define MAX_HEALTH(%1)  (100 + GetConVarInt(g_hea_add_health) * g_hea[%1])
 
 new const String:g_job_name[][] = {"无职业", "精灵", "游侠", "医师"}
+//各种文件
+new const String:g_Crit_Sound[] = {"rpgmod/crit_hit.wav"}
+
 
 //玩家属性
 new g_lv[MAXPLAYER]					//等级
@@ -144,6 +147,12 @@ public EventsInit()
 	HookEvent("player_death", Event_PlayerDeath)
 }
 
+public PrecacheInit()
+{
+	PrecacheSound(g_Crit_Sound, true);
+}
+
+
 public CvarsInit()
 {
 	g_AutoSaveTime	=			CreateConVar("rpg_autosavetime", "30.0", "多久存一次档");
@@ -195,6 +204,7 @@ public OnMapStart()
 {
 	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
 	ServerCommand("exec server.cfg")
+	PrecacheInit()
 	for(int i = 0;i < 15;i++)
 	{
 		ServerCommand("bot_add_t");
@@ -321,6 +331,7 @@ public Action:Event_PlayerHurt(Handle:event, String:event_name[], bool:dontBroad
 	{
 		g_IsCrit[attacker] = false;
 		PrintHintText(attacker, "<font color='#FF0000'>%T</font>", "CRIT",LANG_SERVER,damage);
+		EmitSoundToClient(attacker, g_Crit_Sound);
 	}
 	else PrintHintText(attacker, "<font color='#FF6600'>    -%dHP</font>", damage);
 	
