@@ -55,6 +55,7 @@ new String:g_Save_Path[185]		//存储路径
 new Float:g_Player_Restore_Point[MAXPLAYER]	//下一秒恢复的生命值
 new g_Player_RespawnTime[MAXPLAYER]	//复活时间
 new g_AliveTeam									//CT存活
+new 
 
 //Bool
 new bool:g_IsCrit[MAXPLAYER]		//有没有暴击
@@ -284,7 +285,7 @@ public OnClientDisconnect(client)
 //设置伤害用(BOT也适用噢)
 public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 {
-	if(damagetype == DMG_FALL /*|| !IsClientConnected(attacker)*/)
+	if(damagetype == DMG_FALL || attacker >= MAXPLAYER || attacker < 1 || !IsClientConnected(attacker))
 		return Plugin_Continue
 	
 	if(g_luc[victim] > 0 && !IsFakeClient(victim))
