@@ -149,11 +149,7 @@ public EventsInit()
 
 public PrecacheInit()
 {
-	new bool:A = PrecacheSound(g_Crit_Sound, true);
-	if(A)
-		PrintToServer("yes")
-	else
-		PrintToServer("No")
+	PrecacheSound(g_Crit_Sound, true);
 }
 
 
@@ -302,14 +298,11 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 			PrintHintText(victim, "<font color='#FF6600'>%T</font>", "Dodge",LANG_SERVER)
 			return Plugin_Changed
 		}
-		//我撒币了 把暴击判定放这....
 	}
 	
 	new Float:dmg = damage;
 	new Float:strb = GetConVarFloat(g_str_effect_damage);
 	new Float:dmgout = dmg * (1 + g_str[attacker] * strb);
-	
-	PrintToChatAll("\x03str+:%f", dmgout)
 	
 	if(g_luc[attacker] > 0 && !IsFakeClient(attacker))
 	{
@@ -319,14 +312,11 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 		{
 			g_IsCrit[attacker] = true;
 			dmgout *= GetConVarFloat(g_crit_multi);
-			
-			PrintToChatAll("\x04Crit: %f", dmgout)
 		}
 	}
 	
 	new Float:endb = GetConVarFloat(g_end_reduce_damage);
 	dmgout *= (1.0 - g_end[victim] * endb)
-	PrintToChatAll("End:%f", dmgout)
 	damage = dmgout;
 	return Plugin_Changed;
 }
@@ -343,7 +333,7 @@ public Action:Event_PlayerHurt(Handle:event, String:event_name[], bool:dontBroad
 	if(g_IsCrit[attacker])
 	{
 		g_IsCrit[attacker] = false;
-		PrintHintText(attacker, "<font color='#FF0000'>%T</font>", "CRIT",LANG_SERVER,damage);
+		PrintHintText(attacker, "<font color='#FF0000'>%T</font>", "CRIT",LANG_SERVER, damage);
 		ClientCommand(attacker, "play */%s", g_Crit_Sound);
 	}
 	else PrintHintText(attacker, "<font color='#FF6600'>    -%dHP</font>", damage);
