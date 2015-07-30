@@ -18,6 +18,7 @@ log:
 #include <cstrike>
 #include <sdkhooks>
 
+#define MAXITEM 1024
 #define MAXPLAYER 65
 
 #define NEXTLVXP(%1) (GetConVarInt(g_lvup_need_xp) * g_lv[%1])
@@ -46,6 +47,23 @@ new g_luc[MAXPLAYER]				//幸运
 new g_money[MAXPLAYER]				//金钱
 new g_job[MAXPLAYER]				//职业
 new g_mana[MAXPLAYER]				//魔法值
+
+//Item
+new g_item[MAXITEM][14]
+
+enum
+{
+	itemname,itemslot,
+	itemskin,itemtype,
+	itemdamage,itemammo,
+	itemclip,itemlv,
+	itemstr,itemdex,
+	itemint,itemend,
+	itemhea,itemluc
+}
+
+new Handle:g_Rpg_Items				//Items
+new String:g_Items_Path[185]		//物品路径
 
 //Save
 new Handle:g_Rpg_Save				//Save
@@ -136,12 +154,23 @@ public FileDataInit()
 	g_Rpg_Save = CreateKeyValues("BorderRPG Save");
 	BuildPath(Path_SM, g_Save_Path, 184, "data/BorderRPG_Save.ini");
 	
+	g_Rpg_Items = CreateKeyValues("BorderRPG Items");
+	BuildPath(Path_SM, g_Items_Path, 184, "data/BorderRPG_Items.ini");
+	
 	if (FileExists(g_Save_Path))
 		FileToKeyValues(g_Rpg_Save, g_Save_Path);
 	else
 	{
 		PrintToServer("[BorderRPG]%T", "Cant_Find_Save_File", LANG_SERVER, g_Save_Path);
 		KeyValuesToFile(g_Rpg_Save, g_Save_Path)
+	}
+	
+	if (FileExists(g_Items_Path))
+		FileToKeyValues(g_Rpg_Items, g_Items_Path);
+	else
+	{
+		PrintToServer("[BorderRPG]%T", "Cant_Find_Item_File", LANG_SERVER, g_Items_Path);
+		KeyValuesToFile(g_Rpg_Items, g_Items_Path)
 	}
 }
 
@@ -200,6 +229,59 @@ public CommandInit()
 	AddCommandListener(Command_JoinTeam, "jointeam"); 
 	AddCommandListener(Command_Test, "sm_testa");
 	RegConsoleCmd("sm_save",	Command_SaveUserData);
+}
+
+/*
+===================================
+
+			物品
+			
+===================================
+*/
+
+//读取物品
+public Items_Load(itemid)
+{
+	KvRewind(g_Rpg_Items)
+	new String:ItemID[32]
+	Format(ItemID, 31, "%d", itemid)
+	if(!KvJumpToKey(g_Rpg_Items, ItemID))
+	{
+		PrintToServer("cannot find %s", ItemID);
+		return;
+	}
+	new String:name[64];
+	new String:type[64];
+	g_item[itemid][itemname] = KvGetString(g_Rpg_Items, "name", name,sizeof(name));	
+	g_item[itemid][itemslot] = KvGetNum(g_Rpg_Items,"slot");
+	g_item[itemid][itemskin] = KvGetNum(g_Rpg_Items,"skin");	
+	g_item[itemid][itemtype] = KvGetString(g_Rpg_Items,"type",type,sizeof(type));
+	g_item[itemid][itemdamage] = KvGetNum(g_Rpg_Items,"damage");	
+	g_item[itemid][itemammo] = KvGetNum(g_Rpg_Items,"ammo");
+	g_item[itemid][itemclip] = KvGetNum(g_Rpg_Items,"clip");	
+	g_item[itemid][itemlv] = KvGetNum(g_Rpg_Items,"needlv");
+	g_item[itemid][itemstr] = KvGetNum(g_Rpg_Items,"needstr");	
+	g_item[itemid][itemdex] = KvGetNum(g_Rpg_Items,"needdex");
+	g_item[itemid][itemint] = KvGetNum(g_Rpg_Items,"needint");	
+	g_item[itemid][itemend] = KvGetNum(g_Rpg_Items,"needend");
+	g_item[itemid][itemhea] = KvGetNum(g_Rpg_Items,"needhea");	
+	g_item[itemid][itemluc] = KvGetNum(g_Rpg_Items,"needluc");
+	KvGoBack(g_Rpg_Items);
+	PrintToServer("load %s(ID:%d) successful", g_item[itemid][itemname],itemid);
+}
+
+//给物品
+public Items_Give(client,itemid)
+{
+	if(!g_item[itemid][itemname])
+	{
+		PrintToServer("cannot find %s", itemid);
+		return;
+	}
+	rpg_Strip_Weapon(client, g_item[itemid][itemslot]);
+	rpg_Give_Weapon_Skin(client,g_item[itemid][itemtype], g_item[itemid][itemskin]);
+	rpg_SetAmmo(g_item[itemid][itemtype],g_item[itemid][itemammo]);
+	rpg_SetClip(g_item[itemid][itemtype],g_item[itemid][itemclip]);
 }
 
 /*
@@ -810,4 +892,16 @@ public rpg_Strip_Weapon(client, slot)
 			AcceptEntityInput(WpnEnt, "Kill");
 		}
 	}
+}
+
+//设置子弹
+public rpg_SetAmmo(weapon, ammo)
+{
+	SetEntProp(weapon, Prop_Data, "m_iClip1", ammo);
+}
+
+//设置备弹
+public rpg_SetClip(weapon, clip)
+{
+	SetEntProp(weapon, Prop_Data, "m_iClip2", clip);
 }

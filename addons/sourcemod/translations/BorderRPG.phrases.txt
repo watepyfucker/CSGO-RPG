@@ -37,6 +37,12 @@
 		"chi"		"找不到文件:%s，存档将被重新建立"
 	}
 	
+	"Cant_Find_Item_File"
+	{
+		"en"			"Cannot Find The %s File, it will be create again"
+		"chi"		"找不到文件:%s，物品将被重新建立"
+	}
+	
 	"Player_Data_Saved"
 	{
 		"en"			"Your data has been saved!"
@@ -150,4 +156,6 @@
 		"en"			"CRIT! -%dHP"
 		"chi"			"暴击! -%dHP"
 	}
+	
+	
 }
