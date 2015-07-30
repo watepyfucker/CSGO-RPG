@@ -27,7 +27,7 @@ log:
 
 new const String:g_job_name[][] = {"无职业", "精灵", "游侠", "医师"}
 //各种文件
-new const String:g_Crit_Sound[] = {"rpgmod/crit_hit.wav"}
+new const String:g_Crit_Sound[] = "rpgmod/crit_hit.mp3"
 
 
 //玩家属性
@@ -149,7 +149,11 @@ public EventsInit()
 
 public PrecacheInit()
 {
-	PrecacheSound(g_Crit_Sound, true);
+	new bool:A = PrecacheSound(g_Crit_Sound, true);
+	if(A)
+		PrintToServer("yes")
+	else
+		PrintToServer("No")
 }
 
 
@@ -205,10 +209,10 @@ public OnMapStart()
 	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
 	ServerCommand("exec server.cfg")
 	PrecacheInit()
-	for(int i = 0;i < 15;i++)
-	{
-		ServerCommand("bot_add_t");
-	}
+	// for(int i = 0;i < 15;i++)
+	// {
+		// ServerCommand("bot_add_t");
+	// }
 }
 
 public OnMapEnd()
@@ -231,7 +235,8 @@ public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroad
 public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+	//↓这里貌似会重复伤害的
+	//SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	if(GetClientTeam(client) == CS_TEAM_CT)
 	{
 		g_Player_Restore_Point[client] = 0.0;
@@ -283,15 +288,10 @@ public OnClientDisconnect(client)
 //设置伤害用(BOT也适用噢)
 public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 {
-	if(damagetype == DMG_FALL || !IsClientConnected(attacker))
+	if(damagetype == DMG_FALL /*|| !IsClientConnected(attacker)*/)
 		return Plugin_Continue
 	
-	new Float:dmg = damage;
-	new Float:strb = GetConVarFloat(g_str_effect_damage);
-	new Float:dmgout = dmg + (g_str[attacker] * strb);
-	new Float:rdmg;
-	
-	if(g_luc[victim] > 1)
+	if(g_luc[victim] > 0 && !IsFakeClient(victim))
 	{
 		new dodgec = GetRandomInt(0,100);
 		new Float:dodge = g_luc[victim] * GetConVarFloat(g_luc_dodge_chance)
@@ -302,19 +302,32 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 			PrintHintText(victim, "<font color='#FF6600'>%T</font>", "Dodge",LANG_SERVER)
 			return Plugin_Changed
 		}
-		
+		//我撒币了 把暴击判定放这....
+	}
+	
+	new Float:dmg = damage;
+	new Float:strb = GetConVarFloat(g_str_effect_damage);
+	new Float:dmgout = dmg * (1 + g_str[attacker] * strb);
+	
+	PrintToChatAll("\x03str+:%f", dmgout)
+	
+	if(g_luc[attacker] > 0 && !IsFakeClient(attacker))
+	{
 		new critc = GetRandomInt(0,100);
 		new Float:crit = g_luc[attacker] * GetConVarFloat(g_luc_crit_chance)
 		if(critc <= crit)
 		{
 			g_IsCrit[attacker] = true;
-			rdmg = rdmg * GetConVarFloat(g_crit_multi);
+			dmgout *= GetConVarFloat(g_crit_multi);
+			
+			PrintToChatAll("\x04Crit: %f", dmgout)
 		}
 	}
 	
 	new Float:endb = GetConVarFloat(g_end_reduce_damage);
-	rdmg = dmgout * (1.0 - g_end[victim] * endb)
-	damage = rdmg;
+	dmgout *= (1.0 - g_end[victim] * endb)
+	PrintToChatAll("End:%f", dmgout)
+	damage = dmgout;
 	return Plugin_Changed;
 }
 
@@ -324,14 +337,14 @@ public Action:Event_PlayerHurt(Handle:event, String:event_name[], bool:dontBroad
 	new attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
 	new damage = GetEventInt(event, "dmg_health");
 	
-	if(!IsClientConnected(attacker) || IsFakeClient(attacker) || attacker < 0)
+	if( attacker <= 0 || !IsClientConnected(attacker) || IsFakeClient(attacker))
 		return Plugin_Continue;
 	
 	if(g_IsCrit[attacker])
 	{
 		g_IsCrit[attacker] = false;
 		PrintHintText(attacker, "<font color='#FF0000'>%T</font>", "CRIT",LANG_SERVER,damage);
-		EmitSoundToClient(attacker, g_Crit_Sound);
+		ClientCommand(attacker, "play */%s", g_Crit_Sound);
 	}
 	else PrintHintText(attacker, "<font color='#FF6600'>    -%dHP</font>", damage);
 	
