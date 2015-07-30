@@ -49,18 +49,19 @@ new g_job[MAXPLAYER]				//职业
 new g_mana[MAXPLAYER]				//魔法值
 
 //Item
-new g_item[MAXITEM][14]
-
 enum
 {
-	itemname,itemslot,
-	itemskin,itemtype,
+	itemtype, itemname,
+	itemslot = 0, itemskin,
 	itemdamage,itemammo,
 	itemclip,itemlv,
 	itemstr,itemdex,
 	itemint,itemend,
-	itemhea,itemluc
+	itemhea,itemluc, ITEM_INFO
 }
+
+new g_item_num[MAXITEM][ITEM_INFO]
+new String:g_item_string[MAXITEM][2][32]
 
 new Handle:g_Rpg_Items				//Items
 new String:g_Items_Path[185]		//物品路径
@@ -243,45 +244,46 @@ public CommandInit()
 public Items_Load(itemid)
 {
 	KvRewind(g_Rpg_Items)
-	new String:ItemID[32]
-	Format(ItemID, 31, "%d", itemid)
-	if(!KvJumpToKey(g_Rpg_Items, ItemID))
+	decl String:temp[32]
+	Format(temp, 32, "%d", itemid)
+	if(!KvJumpToKey(g_Rpg_Items, temp))
 	{
-		PrintToServer("cannot find %s", ItemID);
+		PrintToServer("cannot find %s", temp);
 		return;
 	}
-	new String:name[64];
-	new String:type[64];
-	g_item[itemid][itemname] = KvGetString(g_Rpg_Items, "name", name,sizeof(name));	
-	g_item[itemid][itemslot] = KvGetNum(g_Rpg_Items,"slot");
-	g_item[itemid][itemskin] = KvGetNum(g_Rpg_Items,"skin");	
-	g_item[itemid][itemtype] = KvGetString(g_Rpg_Items,"type",type,sizeof(type));
-	g_item[itemid][itemdamage] = KvGetNum(g_Rpg_Items,"damage");	
-	g_item[itemid][itemammo] = KvGetNum(g_Rpg_Items,"ammo");
-	g_item[itemid][itemclip] = KvGetNum(g_Rpg_Items,"clip");	
-	g_item[itemid][itemlv] = KvGetNum(g_Rpg_Items,"needlv");
-	g_item[itemid][itemstr] = KvGetNum(g_Rpg_Items,"needstr");	
-	g_item[itemid][itemdex] = KvGetNum(g_Rpg_Items,"needdex");
-	g_item[itemid][itemint] = KvGetNum(g_Rpg_Items,"needint");	
-	g_item[itemid][itemend] = KvGetNum(g_Rpg_Items,"needend");
-	g_item[itemid][itemhea] = KvGetNum(g_Rpg_Items,"needhea");	
-	g_item[itemid][itemluc] = KvGetNum(g_Rpg_Items,"needluc");
+	KvGetString(g_Rpg_Items, "name", temp, sizeof(temp));	
+	Format(g_item_string[itemid][itemname], 31, "%s", temp)
+	KvGetString(g_Rpg_Items, "type", temp, sizeof(temp));
+	Format(g_item_string[itemid][itemtype], 31, "%s", temp)
+	
+	g_item_num[itemid][itemslot] = KvGetNum(g_Rpg_Items,"slot");
+	g_item_num[itemid][itemskin] = KvGetNum(g_Rpg_Items,"skin");	
+	g_item_num[itemid][itemdamage] = KvGetNum(g_Rpg_Items,"damage");	
+	g_item_num[itemid][itemammo] = KvGetNum(g_Rpg_Items,"ammo");
+	g_item_num[itemid][itemclip] = KvGetNum(g_Rpg_Items,"clip");	
+	g_item_num[itemid][itemlv] = KvGetNum(g_Rpg_Items,"needlv");
+	g_item_num[itemid][itemstr] = KvGetNum(g_Rpg_Items,"needstr");	
+	g_item_num[itemid][itemdex] = KvGetNum(g_Rpg_Items,"needdex");
+	g_item_num[itemid][itemint] = KvGetNum(g_Rpg_Items,"needint");	
+	g_item_num[itemid][itemend] = KvGetNum(g_Rpg_Items,"needend");
+	g_item_num[itemid][itemhea] = KvGetNum(g_Rpg_Items,"needhea");	
+	g_item_num[itemid][itemluc] = KvGetNum(g_Rpg_Items,"needluc");
 	KvGoBack(g_Rpg_Items);
-	PrintToServer("load %s(ID:%d) successful", g_item[itemid][itemname],itemid);
+	PrintToServer("load %s(ID:%d) successful", g_item_string[itemid][itemname],itemid);
 }
 
 //给物品
 public Items_Give(client,itemid)
 {
-	if(!g_item[itemid][itemname])
+	if(!g_item_string[itemid][itemname][0])
 	{
 		PrintToServer("cannot find %s", itemid);
 		return;
 	}
-	rpg_Strip_Weapon(client, g_item[itemid][itemslot]);
-	rpg_Give_Weapon_Skin(client,g_item[itemid][itemtype], g_item[itemid][itemskin]);
-	rpg_SetAmmo(g_item[itemid][itemtype],g_item[itemid][itemammo]);
-	rpg_SetClip(g_item[itemid][itemtype],g_item[itemid][itemclip]);
+	rpg_Strip_Weapon(client, g_item_num[itemid][itemslot]);
+	rpg_Give_Weapon_Skin(client, g_item_string[itemid][itemtype], g_item_num[itemid][itemskin]);
+	rpg_SetAmmo(g_item_string[itemid][itemtype], g_item_num[itemid][itemammo]);
+	rpg_SetClip(g_item_string[itemid][itemtype], g_item_num[itemid][itemclip]);
 }
 
 /*
@@ -895,12 +897,14 @@ public rpg_Strip_Weapon(client, slot)
 }
 
 //设置子弹
+//weapon是实体索引
 public rpg_SetAmmo(weapon, ammo)
 {
 	SetEntProp(weapon, Prop_Data, "m_iClip1", ammo);
 }
 
 //设置备弹
+//weapon是实体索引
 public rpg_SetClip(weapon, clip)
 {
 	SetEntProp(weapon, Prop_Data, "m_iClip2", clip);
