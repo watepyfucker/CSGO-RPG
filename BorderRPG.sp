@@ -282,8 +282,7 @@ public Items_Give(client,itemid)
 	}
 	rpg_Strip_Weapon(client, g_item_num[itemid][itemslot]);
 	rpg_Give_Weapon_Skin(client, g_item_string[itemid][itemtype], g_item_num[itemid][itemskin]);
-	rpg_SetAmmo(g_item_string[itemid][itemtype], g_item_num[itemid][itemammo]);
-	rpg_SetClip(g_item_string[itemid][itemtype], g_item_num[itemid][itemclip]);
+	rpg_SetAmmo(client,g_item_string[itemid][itemtype],g_item_num[itemid][itemammo],g_item_num[itemid][itemammo],g_item_num[itemid][itemclip],g_item_num[itemid][itemclip]);
 }
 
 /*
@@ -299,6 +298,7 @@ public OnMapStart()
 {
 	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
 	ServerCommand("exec server.cfg")
+	Items_Load(0)
 	g_ServerDiffcult = 1
 	PrecacheInit()
 	// for(int i = 0;i < 15;i++)
@@ -332,6 +332,7 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 		g_Player_Restore_Point[client] = 0.0;
 		g_Player_RespawnTime[client] = -1;
 		g_AliveTeam++;
+		Items_Give(client,0)
 		
 		//设置玩家属性
 		SetEntityHealth(client, MAX_HEALTH(client))
@@ -897,15 +898,101 @@ public rpg_Strip_Weapon(client, slot)
 }
 
 //设置子弹
-//weapon是实体索引
-public rpg_SetAmmo(weapon, ammo)
+bool:rpg_SetAmmo(client,String:WpnName[],ammo=-1,ammo2=-1,clip=-1,clip2=-1)
 {
-	SetEntProp(weapon, Prop_Data, "m_iClip1", ammo);
+	new weapon = rpg_GetWeapon(client, WpnName);
+	
+	if (weapon == INVALID_ENT_REFERENCE)
+		return false;
+	
+	if(clip != -1)
+		SetEntProp(weapon, Prop_Data, "m_iClip1", clip);
+	
+	if(clip2 != -1)
+		SetEntProp(weapon, Prop_Data, "m_iClip2", clip2);
+	
+	rpg_SetWeaponPlayerAmmoEx(client, weapon, ammo, ammo2);
+	
+	return true;
 }
 
-//设置备弹
-//weapon是实体索引
-public rpg_SetClip(weapon, clip)
+rpg_SetWeaponPlayerAmmoEx(client, weapon, ammo=-1, ammo2=-1)
 {
-	SetEntProp(weapon, Prop_Data, "m_iClip2", clip);
+	new offset_ammo = FindDataMapOffs(client, "m_iAmmo");
+
+	if (ammo != -1) {
+		new offset = offset_ammo + (rpg_GetAmmoType(weapon) * 4);
+		SetEntData(client, offset, ammo, 4, true);
+	}
+
+	if (ammo2 != -1) {
+		new offset = offset_ammo + (rpg_GetAmmo2Type(weapon) * 4);
+		SetEntData(client, offset, ammo2, 4, true);
+	}
+}
+
+//获取
+public rpg_GetWeapon(client, String:WpnName[])
+{
+	new offset = rpg_GetWeaponsOffset(client);
+	new weapon = INVALID_ENT_REFERENCE;
+	for(new i = 0; i < 64;i++)
+	{
+		offset += 4;
+		weapon = GetEntDataEnt2(client, offset);
+		
+		if(!Weapon_IsValid(weapon))
+			continue
+		
+		if (rpg_ClassNameMatches(weapon, WpnName))
+			return weapon;
+	}
+	
+	return INVALID_ENT_REFERENCE;
+}
+
+public rpg_GetWeaponsOffset(client)
+{
+	static offset = -1;
+
+	if (offset == -1)
+		offset = FindDataMapOffs(client, "m_hMyWeapons");
+	
+	return offset;
+}
+
+public rpg_GetAmmoType(weapon)
+{
+	return GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType");
+}
+
+public rpg_GetAmmo2Type(weapon)
+{
+	return GetEntProp(weapon, Prop_Data, "m_iSecondaryAmmoType");
+}
+
+//检测
+bool:rpg_ClassNameMatches(entity, String:wpnName[], partialMatch=false)
+{
+	decl String:entity_className[64];
+	rpg_GetClassName(entity, entity_className, sizeof(entity_className));
+	
+	if (partialMatch) {
+		return (StrContains(entity_className, wpnName) != -1);
+	}
+	
+	return StrEqual(entity_className, wpnName);
+}
+
+public rpg_GetClassName(entity, String:buffer[], size)
+{
+	return GetEntPropString(entity, Prop_Data, "m_iClassname", buffer, size);	
+}
+
+public Weapon_IsValid(weapon)
+{
+	if (!IsValidEdict(weapon))
+		return false;
+	
+	return rpg_ClassNameMatches(weapon, "weapon_", true);
 }
