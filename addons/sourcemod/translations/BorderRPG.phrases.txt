@@ -6,6 +6,19 @@
 		"chi"			"准备战斗!"
 	}
 	
+	"Player_Join"
+	{
+		"en" 			"A player join game, Now General level:<%d>"
+		"chi"		"一位玩家加入了游戏，现在总等级为\x04<%d>\x01级"
+	}
+	
+	"Player_Quit"
+	{
+		"en"		"A player quit game, Now General level:\x04<%d>, Diffcultly:\x04<%d>"
+		"chi"		"一位玩家退出了游戏，现在总等级为\x04<%d>\x01级, 难度为\x04<%d>"
+	}
+	
+	
 	"PluginPrefix"
 	{
 		"en"			"RPG"

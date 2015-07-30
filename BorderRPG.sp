@@ -55,7 +55,8 @@ new String:g_Save_Path[185]		//存储路径
 new Float:g_Player_Restore_Point[MAXPLAYER]	//下一秒恢复的生命值
 new g_Player_RespawnTime[MAXPLAYER]	//复活时间
 new g_AliveTeam									//CT存活
-new 
+new g_ServerLevel									//服务器总等级
+new g_ServerDiffcult							//服务器难度
 
 //Bool
 new bool:g_IsCrit[MAXPLAYER]		//有没有暴击
@@ -66,8 +67,14 @@ new Handle:g_RespawnTime_CT				//CT复活时间
 new Handle:g_lvup_need_xp				//升级需要的经验值(基础量)
 new Handle:g_kill_T_xp						//杀死T获得的经验(基础量)
 new Handle:g_kill_T_money				//杀死T获得的金钱(基础量)
+new Handle:g_T_base_speed				//T基础速度
 new Handle:g_lvup_get_sp					//升级获得的技能点
 
+new Handle:g_lv_to_difficult			//每多少级增加一级难度
+new Handle:g_diffcult_add_hp			//每一难度增加的怪生命值
+new Handle:g_diffcult_add_dmg			//每一难度增加的怪攻击力
+
+new Handle:g_base_mana						//基础魔法值
 new Handle:g_str_max						//力量最大值
 new Handle:g_dex_max						//敏捷最大值
 new Handle:g_int_max						//智力最大值
@@ -82,11 +89,9 @@ new Handle:g_end_restore_health		//耐力增加的每秒生命恢复
 new Handle:g_int_effect_mana			//智力增加的MP上限及恢复速度(增加每秒恢复量 = 增加MP上限/100)
 new Handle:g_luc_dodge_chance			//幸运闪避几率
 new Handle:g_luc_crit_chance			//幸运暴击几率
-new Handle:g_luc_drop_chance			//幸运掉宝几率
-
+new Handle:g_luc_drop_chance			//幸运掉宝几率 
 new Handle:g_crit_multi					//暴击伤害倍数
 
-new Handle:g_base_mana						//基础魔法值
 //Timers
 new Handle:g_PlayerThinkTimer[MAXPLAYER]	//Think
 new Handle:g_PlayerAutoSaveTimer					//Autosave
@@ -161,7 +166,12 @@ public CvarsInit()
 	g_lvup_need_xp =		    CreateConVar("rpg_xp_lvup", "100", "升级所需经验值(基础量)");
 	g_kill_T_xp =			    CreateConVar("rpg_kill_t_get_xp", "10", "杀死T获得的经验(基础量)");
 	g_kill_T_money = 			CreateConVar("rpg_kill_t_get_money", "10", "杀死T获得的金钱(基础量)");
+	g_T_base_speed = 			CreateConVar("rpg_t_base_speed", "1.1", "T的基础速度")
 	g_lvup_get_sp = 			CreateConVar("rpg_get_sp_lvup", "5", "升级获得的技能点")
+	
+	g_lv_to_difficult	=		CreateConVar("rpg_lv_to_difficult", "10", "每多少级增加一级难度")
+	g_diffcult_add_dmg =		CreateConVar("rpg_difficult_add_dmg", "0.025", "每级难度增加的怪攻击力")
+	g_diffcult_add_hp =		CreateConVar("rpg_difficult_add_hp", "20", "每级难度增加的怪血量")
 	
 	g_str_max = 					CreateConVar("rpg_str_max", "2000", "力量最大值")
 	g_int_max = 					CreateConVar("rpg_int_max", "2000", "智力最大值")
@@ -205,6 +215,7 @@ public OnMapStart()
 {
 	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
 	ServerCommand("exec server.cfg")
+	g_ServerDiffcult = 1
 	PrecacheInit()
 	// for(int i = 0;i < 15;i++)
 	// {
@@ -232,8 +243,6 @@ public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroad
 public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	//↓这里貌似会重复伤害的
-	//SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	if(GetClientTeam(client) == CS_TEAM_CT)
 	{
 		g_Player_Restore_Point[client] = 0.0;
@@ -241,12 +250,17 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 		g_AliveTeam++;
 		
 		//设置玩家属性
-		SetEntityHealth(client, MAX_HEALTH(client) )
+		SetEntityHealth(client, MAX_HEALTH(client))
 		SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 
 		GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue") * (1.0 + g_dex[client] * GetConVarFloat(g_dex_effect_speed))); 
 		
 		PrintToChat(client, "speed:%f", GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue"))
-		
+	}
+	
+	else if(GetClientTeam(client) == CS_TEAM_T)
+	{
+		SetEntityHealth(client, 100 + g_ServerDiffcult * GetConVarInt(g_diffcult_add_hp))
+		SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", GetConVarFloat(g_T_base_speed))
 	}
 	return Plugin_Continue;
 }
@@ -259,6 +273,9 @@ public OnClientPutInServer(client)
 	{
 		rpg_Reset_Player_Vars(client)
 		rpg_Client_Load_Data(client)
+		g_ServerLevel += g_lv[client]
+		g_ServerDiffcult = g_ServerLevel / GetConVarInt(g_lv_to_difficult)
+		PrintToChatAll("\x01 \x02[RPGmod]\x01%T", "Player_Join", LANG_SERVER, g_ServerLevel);
 		g_PlayerThinkTimer[client] = CreateTimer(1.0, Timer_PlayerThink, client, TIMER_REPEAT);
 	}
 }
@@ -276,6 +293,9 @@ public OnClientDisconnect(client)
 	{
 		if(g_PlayerThinkTimer[client] != INVALID_HANDLE)
 		{
+			g_ServerLevel -= g_lv[client]
+			g_ServerDiffcult = g_ServerLevel / GetConVarInt(g_lv_to_difficult)
+			PrintToChatAll("\x01 \x02[RPGmod]\x01%T", "Player_Quit", LANG_SERVER, g_ServerLevel, g_ServerDiffcult);
 			KillTimer(g_PlayerThinkTimer[client])
 			g_PlayerThinkTimer[client] = INVALID_HANDLE;
 		}
@@ -288,38 +308,58 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	if(damagetype == DMG_FALL || attacker >= MAXPLAYER || attacker < 1 || !IsClientConnected(attacker))
 		return Plugin_Continue
 	
-	if(g_luc[victim] > 0 && !IsFakeClient(victim))
+	//T的攻击
+	if(GetClientTeam(attacker) == CS_TEAM_T)
 	{
-		new dodgec = GetRandomInt(0,100);
-		new Float:dodge = g_luc[victim] * GetConVarFloat(g_luc_dodge_chance)
+		//队伤
+		if(GetClientTeam(victim) == CS_TEAM_T)
+			return Plugin_Continue;
 		
-		if(dodgec <= dodge)
+		if(g_luc[victim] > 0 && !IsFakeClient(victim))
 		{
-			damage = 0.0;
-			PrintHintText(victim, "<font color='#FF6600'>%T</font>", "Dodge",LANG_SERVER)
-			return Plugin_Changed
+			new dodgec = GetRandomInt(0,100);
+			new Float:dodge = g_luc[victim] * GetConVarFloat(g_luc_dodge_chance)
+		
+			if(dodgec <= dodge)
+			{
+				damage = 0.0;
+				PrintHintText(victim, "<font color='#B3EE3A'>%T</font>", "Dodge",LANG_SERVER)
+				return Plugin_Changed
+			}
 		}
+		
+		damage *= (1.0 + g_ServerDiffcult * GetConVarFloat(g_diffcult_add_dmg))
+		PrintToChat(victim, "%d, %d", g_ServerDiffcult, g_ServerLevel)
+		PrintToChat(victim, "%f", damage)
+		damage *= (1.0 - g_end[victim] * GetConVarFloat(g_end_reduce_damage))
+		return Plugin_Changed;
 	}
 	
-	new Float:dmg = damage;
-	new Float:strb = GetConVarFloat(g_str_effect_damage);
-	new Float:dmgout = dmg * (1 + g_str[attacker] * strb);
-	
-	if(g_luc[attacker] > 0 && !IsFakeClient(attacker))
+	//CT的攻击
+	else if(GetClientTeam(attacker) == CS_TEAM_CT)
 	{
-		new critc = GetRandomInt(0,100);
-		new Float:crit = g_luc[attacker] * GetConVarFloat(g_luc_crit_chance)
-		if(critc <= crit)
+		//队伤xAI打
+		if(GetClientTeam(victim) == CS_TEAM_CT || IsFakeClient(attacker))
+			return Plugin_Continue;
+		
+		new Float:strb = GetConVarFloat(g_str_effect_damage);
+		damage *= (1 + g_str[attacker] * strb);
+		
+		if(g_luc[attacker] > 0 && !IsFakeClient(attacker))
 		{
-			g_IsCrit[attacker] = true;
-			dmgout *= GetConVarFloat(g_crit_multi);
+			new critc = GetRandomInt(0,100);
+			new Float:crit = g_luc[attacker] * GetConVarFloat(g_luc_crit_chance)
+			if(critc <= crit)
+			{
+				g_IsCrit[attacker] = true;
+				damage *= GetConVarFloat(g_crit_multi);
+			}
 		}
+		
+		return Plugin_Changed;
 	}
 	
-	new Float:endb = GetConVarFloat(g_end_reduce_damage);
-	dmgout *= (1.0 - g_end[victim] * endb)
-	damage = dmgout;
-	return Plugin_Changed;
+	return Plugin_Continue;
 }
 
 //玩家伤害
