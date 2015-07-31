@@ -234,59 +234,6 @@ public CommandInit()
 
 /*
 ===================================
-
-			物品
-			
-===================================
-*/
-
-//读取物品
-public Items_Load(itemid)
-{
-	KvRewind(g_Rpg_Items)
-	decl String:temp[32]
-	Format(temp, 32, "%d", itemid)
-	if(!KvJumpToKey(g_Rpg_Items, temp))
-	{
-		PrintToServer("cannot find %s", temp);
-		return;
-	}
-	KvGetString(g_Rpg_Items, "name", temp, sizeof(temp));	
-	Format(g_item_string[itemid][itemname], 31, "%s", temp)
-	KvGetString(g_Rpg_Items, "type", temp, sizeof(temp));
-	Format(g_item_string[itemid][itemtype], 31, "%s", temp)
-	
-	g_item_num[itemid][itemslot] = KvGetNum(g_Rpg_Items,"slot");
-	g_item_num[itemid][itemskin] = KvGetNum(g_Rpg_Items,"skin");	
-	g_item_num[itemid][itemdamage] = KvGetNum(g_Rpg_Items,"damage");	
-	g_item_num[itemid][itemammo] = KvGetNum(g_Rpg_Items,"ammo");
-	g_item_num[itemid][itemclip] = KvGetNum(g_Rpg_Items,"clip");	
-	g_item_num[itemid][itemlv] = KvGetNum(g_Rpg_Items,"needlv");
-	g_item_num[itemid][itemstr] = KvGetNum(g_Rpg_Items,"needstr");	
-	g_item_num[itemid][itemdex] = KvGetNum(g_Rpg_Items,"needdex");
-	g_item_num[itemid][itemint] = KvGetNum(g_Rpg_Items,"needint");	
-	g_item_num[itemid][itemend] = KvGetNum(g_Rpg_Items,"needend");
-	g_item_num[itemid][itemhea] = KvGetNum(g_Rpg_Items,"needhea");	
-	g_item_num[itemid][itemluc] = KvGetNum(g_Rpg_Items,"needluc");
-	KvGoBack(g_Rpg_Items);
-	PrintToServer("load %s(ID:%d) successful", g_item_string[itemid][itemname],itemid);
-}
-
-//给物品
-public Items_Give(client,itemid)
-{
-	if(!g_item_string[itemid][itemname][0])
-	{
-		PrintToServer("cannot find %s", itemid);
-		return;
-	}
-	rpg_Strip_Weapon(client, g_item_num[itemid][itemslot]);
-	rpg_Give_Weapon_Skin(client, g_item_string[itemid][itemtype], g_item_num[itemid][itemskin]);
-	rpg_SetAmmo(client,g_item_string[itemid][itemtype],g_item_num[itemid][itemammo],g_item_num[itemid][itemammo],g_item_num[itemid][itemclip],g_item_num[itemid][itemclip]);
-}
-
-/*
-===================================
 		
 		   各种事件
 		
@@ -298,7 +245,9 @@ public OnMapStart()
 {
 	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
 	ServerCommand("exec server.cfg")
-	Items_Load(0)
+	new temp[7]
+	rpg_Item_Weapon_Create("Gaa", "weapon_ak47", 0, 26, 999, 80, 800, temp)
+	rpg_Item_Weapon_Load(0)
 	g_ServerDiffcult = 1
 	PrecacheInit()
 	// for(int i = 0;i < 15;i++)
@@ -332,7 +281,7 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 		g_Player_Restore_Point[client] = 0.0;
 		g_Player_RespawnTime[client] = -1;
 		g_AliveTeam++;
-		Items_Give(client,0)
+		rpg_Item_Weapon_Give(client,0)
 		
 		//设置玩家属性
 		SetEntityHealth(client, MAX_HEALTH(client))
@@ -795,6 +744,86 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		
 ===================================
 */
+
+/*
+	物品
+*/
+
+//读取物品
+public rpg_Item_Weapon_Load(itemid)
+{
+	KvRewind(g_Rpg_Items)
+	decl String:temp[32]
+	Format(temp, 32, "Item %d", itemid)
+	if(!KvJumpToKey(g_Rpg_Items, temp))
+	{
+		PrintToServer("cannot find %s", temp);
+		return;
+	}
+	KvGetString(g_Rpg_Items, "name", temp, sizeof(temp));	
+	Format(g_item_string[itemid][itemname], 31, "%s", temp)
+	KvGetString(g_Rpg_Items, "type", temp, sizeof(temp));
+	Format(g_item_string[itemid][itemtype], 31, "%s", temp)
+	
+	g_item_num[itemid][itemslot] = KvGetNum(g_Rpg_Items,"slot");
+	g_item_num[itemid][itemskin] = KvGetNum(g_Rpg_Items,"skin");	
+	g_item_num[itemid][itemdamage] = KvGetNum(g_Rpg_Items,"damage");	
+	g_item_num[itemid][itemammo] = KvGetNum(g_Rpg_Items,"ammo");
+	g_item_num[itemid][itemclip] = KvGetNum(g_Rpg_Items,"clip");	
+	g_item_num[itemid][itemlv] = KvGetNum(g_Rpg_Items,"needlv");
+	g_item_num[itemid][itemstr] = KvGetNum(g_Rpg_Items,"needstr");	
+	g_item_num[itemid][itemdex] = KvGetNum(g_Rpg_Items,"needdex");
+	g_item_num[itemid][itemint] = KvGetNum(g_Rpg_Items,"needint");	
+	g_item_num[itemid][itemend] = KvGetNum(g_Rpg_Items,"needend");
+	g_item_num[itemid][itemhea] = KvGetNum(g_Rpg_Items,"needhea");	
+	g_item_num[itemid][itemluc] = KvGetNum(g_Rpg_Items,"needluc");
+	KvGoBack(g_Rpg_Items);
+	PrintToServer("load %s(ID:%d) successful", g_item_string[itemid][itemname],itemid);
+}
+
+//给物品
+public rpg_Item_Weapon_Give(client,itemid)
+{
+	if(!g_item_string[itemid][itemname][0])
+	{
+		PrintToServer("cannot find %d item", itemid);
+		return;
+	}
+	rpg_Strip_Weapon(client, g_item_num[itemid][itemslot]);
+	rpg_Give_Weapon_Skin(client, g_item_string[itemid][itemtype], g_item_num[itemid][itemskin]);
+	rpg_SetAmmo(client,g_item_string[itemid][itemtype],g_item_num[itemid][itemammo],g_item_num[itemid][itemammo],g_item_num[itemid][itemclip],g_item_num[itemid][itemclip]);
+}
+
+//创建物品
+public rpg_Item_Weapon_Create(String:name[], String:type[], slot, skin, damage, ammo, clip, needskill[])
+{
+	decl String:temp[32]
+	Format(temp, 31, "Item 0")
+	new itemid = 0;
+	while(KvJumpToKey(g_Rpg_Items, temp))
+	{
+		Format(temp, 31, "Item %d", itemid)
+		itemid++
+	}
+	KvJumpToKey(g_Rpg_Items, temp, true)
+	
+	PrintToServer("ITEM%d", itemid)
+	
+	KvSetString(g_Rpg_Items, "name", name); KvSetString(g_Rpg_Items, "type", type)
+	KvSetNum(g_Rpg_Items,"slot", slot); KvSetNum(g_Rpg_Items,"skin", skin);
+	KvSetNum(g_Rpg_Items,"damage", damage); KvSetNum(g_Rpg_Items,"ammo", ammo);
+	KvSetNum(g_Rpg_Items,"clip", clip);
+	
+	new String:NdSkill[][] = {"needlv", "needstr", "needdex", "needint", "needend", "needhea", "needluc"}
+	new NdSkillNum = sizeof NdSkill
+	for(new i = 0; i < NdSkillNum; i++)
+		KvSetNum(g_Rpg_Items, NdSkill[i], needskill[i])
+	
+	KvRewind(g_Rpg_Items)
+	KeyValuesToFile(g_Rpg_Items, g_Items_Path);
+}
+
+
 //存档
 public rpg_Client_Save_Data(client)
 {
@@ -951,6 +980,7 @@ public rpg_GetWeapon(client, String:WpnName[])
 	return INVALID_ENT_REFERENCE;
 }
 
+//获取offset
 public rpg_GetWeaponsOffset(client)
 {
 	static offset = -1;
@@ -986,7 +1016,7 @@ bool:rpg_ClassNameMatches(entity, String:wpnName[], partialMatch=false)
 
 public rpg_GetClassName(entity, String:buffer[], size)
 {
-	return GetEntPropString(entity, Prop_Data, "m_iClassname", buffer, size);	
+	GetEntPropString(entity, Prop_Data, "m_iClassname", buffer, size);	
 }
 
 public Weapon_IsValid(weapon)
