@@ -18,8 +18,8 @@ log:
 #include <cstrike>
 #include <sdkhooks>
 
-#define MAXPLAYER 65
 #define MAXITEM 1024
+#define MAXPLAYER 65
 
 #define NEXTLVXP(%1) (GetConVarInt(g_lvup_need_xp) * g_lv[%1])
 #define KILL_T_XP		GetConVarInt(g_kill_T_xp)
@@ -48,10 +48,6 @@ new g_money[MAXPLAYER]				//金钱
 new g_job[MAXPLAYER]				//职业
 new g_mana[MAXPLAYER]				//魔法值
 
-//Save
-new Handle:g_Rpg_Save				//Save
-new String:g_Save_Path[185]		//存储路径
-
 //Item
 enum
 {
@@ -70,12 +66,17 @@ new String:g_item_string[MAXITEM][2][32]
 new Handle:g_Rpg_Items				//Items
 new String:g_Items_Path[185]		//物品路径
 
+//Save
+new Handle:g_Rpg_Save				//Save
+new String:g_Save_Path[185]		//存储路径
+
 //Vars
 new Float:g_Player_Restore_Point[MAXPLAYER]	//下一秒恢复的生命值
 new g_Player_RespawnTime[MAXPLAYER]	//复活时间
 new g_AliveTeam									//CT存活
 new g_ServerLevel									//服务器总等级
 new g_ServerDiffcult							//服务器难度
+new g_Player_Item_Weapon[MAXPLAYER]				//玩家目前武器装备
 
 //Bool
 new bool:g_IsCrit[MAXPLAYER]		//有没有暴击
@@ -144,89 +145,6 @@ public OnPluginStart()
 
 /*
 ===================================
-
-			物品
-			
-===================================
-*/
-
-//物品
-public rpg_Item_Weapon_Load(itemid)
-{
-	KvRewind(g_Rpg_Items)
-	decl String:temp[32]
-	Format(temp, 32, "Item %d", itemid)
-	if(!KvJumpToKey(g_Rpg_Items, temp))
-	{
-		PrintToServer("cannot find %s", temp);
-		return;
-	}
-	KvGetString(g_Rpg_Items, "name", temp, sizeof(temp));	
-	Format(g_item_string[itemid][itemname], 31, "%s", temp)
-	KvGetString(g_Rpg_Items, "type", temp, sizeof(temp));
-	Format(g_item_string[itemid][itemtype], 31, "%s", temp)
-	
-	g_item_num[itemid][itemslot] = KvGetNum(g_Rpg_Items,"slot");
-	g_item_num[itemid][itemskin] = KvGetNum(g_Rpg_Items,"skin");	
-	g_item_num[itemid][itemdamage] = KvGetNum(g_Rpg_Items,"damage");	
-	g_item_num[itemid][itemammo] = KvGetNum(g_Rpg_Items,"ammo");
-	g_item_num[itemid][itemclip] = KvGetNum(g_Rpg_Items,"clip");	
-	g_item_num[itemid][itemlv] = KvGetNum(g_Rpg_Items,"needlv");
-	g_item_num[itemid][itemstr] = KvGetNum(g_Rpg_Items,"needstr");	
-	g_item_num[itemid][itemdex] = KvGetNum(g_Rpg_Items,"needdex");
-	g_item_num[itemid][itemint] = KvGetNum(g_Rpg_Items,"needint");	
-	g_item_num[itemid][itemend] = KvGetNum(g_Rpg_Items,"needend");
-	g_item_num[itemid][itemhea] = KvGetNum(g_Rpg_Items,"needhea");	
-	g_item_num[itemid][itemluc] = KvGetNum(g_Rpg_Items,"needluc");
-	KvGoBack(g_Rpg_Items);
-	PrintToServer("load %s(ID:%d) successful", g_item_string[itemid][itemname],itemid);
-}
-
-//给物品
-public rpg_Item_Weapon_Give(client,itemid)
-{
-	if(!g_item_string[itemid][itemname][0])
-	{
-		PrintToServer("cannot find %d item", itemid);
-		return;
-	}
-	rpg_Strip_Weapon(client, g_item_num[itemid][itemslot]);
-	rpg_Give_Weapon_Skin(client, g_item_string[itemid][itemtype], g_item_num[itemid][itemskin],g_item_num[itemid][itemammo],g_item_num[itemid][itemclip]);
-}
-
-//创建物品
-public rpg_Item_Weapon_Create(String:name[], String:type[], slot, skin, damage, ammo, clip, needskill[])
-{
-	decl String:temp[32]
-	Format(temp, 31, "Item 0")
-	new itemid = 0;
-	while(KvJumpToKey(g_Rpg_Items, temp))
-	{
-		Format(temp, 31, "Item %d", itemid)
-		itemid++
-	}
-	KvJumpToKey(g_Rpg_Items, temp, true)
-	
-	PrintToServer("ITEM%d", itemid)
-	
-	KvSetString(g_Rpg_Items, "name", name); KvSetString(g_Rpg_Items, "type", type)
-	KvSetNum(g_Rpg_Items,"slot", slot); KvSetNum(g_Rpg_Items,"skin", skin);
-	KvSetNum(g_Rpg_Items,"damage", damage); KvSetNum(g_Rpg_Items,"ammo", ammo);
-	KvSetNum(g_Rpg_Items,"clip", clip);
-	
-	new String:NdSkill[][] = {"needlv", "needstr", "needdex", "needint", "needend", "needhea", "needluc"}
-	new NdSkillNum = sizeof NdSkill
-	for(new i = 0; i < NdSkillNum; i++)
-		KvSetNum(g_Rpg_Items, NdSkill[i], needskill[i])
-	
-	KvRewind(g_Rpg_Items)
-	KeyValuesToFile(g_Rpg_Items, g_Items_Path);
-}
-
-
-
-/*
-===================================
 		
 		   初始化
 		
@@ -238,6 +156,9 @@ public FileDataInit()
 	g_Rpg_Save = CreateKeyValues("BorderRPG Save");
 	BuildPath(Path_SM, g_Save_Path, 184, "data/BorderRPG_Save.ini");
 	
+	g_Rpg_Items = CreateKeyValues("BorderRPG Items");
+	BuildPath(Path_SM, g_Items_Path, 184, "data/BorderRPG_Items.ini");
+	
 	if (FileExists(g_Save_Path))
 		FileToKeyValues(g_Rpg_Save, g_Save_Path);
 	else
@@ -245,9 +166,6 @@ public FileDataInit()
 		PrintToServer("[BorderRPG]%T", "Cant_Find_Save_File", LANG_SERVER, g_Save_Path);
 		KeyValuesToFile(g_Rpg_Save, g_Save_Path)
 	}
-	
-	g_Rpg_Items = CreateKeyValues("BorderRPG Items");
-	BuildPath(Path_SM, g_Items_Path, 184, "data/BorderRPG_Items.ini");
 	
 	if (FileExists(g_Items_Path))
 		FileToKeyValues(g_Rpg_Items, g_Items_Path);
@@ -328,6 +246,8 @@ public OnMapStart()
 {
 	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
 	ServerCommand("exec server.cfg")
+	new temp[7]
+	rpg_Item_Weapon_Create("Gaa", "weapon_ak47", 0, 26, 999, 80, 800, temp)
 	rpg_Item_Weapon_Load(0)
 	g_ServerDiffcult = 1
 	PrecacheInit()
@@ -612,7 +532,7 @@ public Action:Command_JoinTeam(client, const String:command[], args)
 public Action:Command_Test(client, const String:command[], args)
 {
 	rpg_Strip_Weapon(client, 0)
-	rpg_Give_Weapon_Skin(client, "weapon_ak47", 344,999,999)
+	rpg_Give_Weapon_Skin(client, "weapon_ak47", 344)
 }
 
 public Action:Command_SaveUserData(client, args)
@@ -825,6 +745,87 @@ public MenuHandler_SkillMenu(Handle:menu, MenuAction:action, param1, param2)
 		
 ===================================
 */
+
+/*
+	物品
+*/
+
+//读取物品
+public rpg_Item_Weapon_Load(itemid)
+{
+	KvRewind(g_Rpg_Items)
+	decl String:temp[32]
+	Format(temp, 32, "Item %d", itemid)
+	if(!KvJumpToKey(g_Rpg_Items, temp))
+	{
+		PrintToServer("cannot find %s", temp);
+		return;
+	}
+	KvGetString(g_Rpg_Items, "name", temp, sizeof(temp));	
+	Format(g_item_string[itemid][itemname], 31, "%s", temp)
+	KvGetString(g_Rpg_Items, "type", temp, sizeof(temp));
+	Format(g_item_string[itemid][itemtype], 31, "%s", temp)
+	
+	g_item_num[itemid][itemslot] = KvGetNum(g_Rpg_Items,"slot");
+	g_item_num[itemid][itemskin] = KvGetNum(g_Rpg_Items,"skin");	
+	g_item_num[itemid][itemdamage] = KvGetNum(g_Rpg_Items,"damage");	
+	g_item_num[itemid][itemammo] = KvGetNum(g_Rpg_Items,"ammo");
+	g_item_num[itemid][itemclip] = KvGetNum(g_Rpg_Items,"clip");	
+	g_item_num[itemid][itemlv] = KvGetNum(g_Rpg_Items,"needlv");
+	g_item_num[itemid][itemstr] = KvGetNum(g_Rpg_Items,"needstr");	
+	g_item_num[itemid][itemdex] = KvGetNum(g_Rpg_Items,"needdex");
+	g_item_num[itemid][itemint] = KvGetNum(g_Rpg_Items,"needint");	
+	g_item_num[itemid][itemend] = KvGetNum(g_Rpg_Items,"needend");
+	g_item_num[itemid][itemhea] = KvGetNum(g_Rpg_Items,"needhea");	
+	g_item_num[itemid][itemluc] = KvGetNum(g_Rpg_Items,"needluc");
+	KvGoBack(g_Rpg_Items);
+	PrintToServer("load %s(ID:%d) successful", g_item_string[itemid][itemname],itemid);
+}
+
+//给物品
+public rpg_Item_Weapon_Give(client,itemid)
+{
+	if(!g_item_string[itemid][itemname][0])
+	{
+		PrintToServer("cannot find %d item", itemid);
+		return;
+	}
+	g_Player_Item_Weapon[client] = itemid
+	rpg_Strip_Weapon(client, g_item_num[itemid][itemslot]);
+	rpg_Give_Weapon_Skin(client, g_item_string[itemid][itemtype], g_item_num[itemid][itemskin]);
+}
+
+//创建物品
+public rpg_Item_Weapon_Create(String:name[], String:type[], slot, skin, damage, ammo, clip, needskill[])
+{
+	decl String:temp[32]
+	Format(temp, 31, "Item 0")
+	new itemid = 0;
+	while(KvJumpToKey(g_Rpg_Items, temp))
+	{
+		Format(temp, 31, "Item %d", itemid)
+		itemid++
+	}
+	KvRewind(g_Rpg_Items)
+	KvJumpToKey(g_Rpg_Items, temp, true)
+	
+	PrintToServer("ITEM%d", itemid)
+	
+	KvSetString(g_Rpg_Items, "name", name); KvSetString(g_Rpg_Items, "type", type)
+	KvSetNum(g_Rpg_Items,"slot", slot); KvSetNum(g_Rpg_Items,"skin", skin);
+	KvSetNum(g_Rpg_Items,"damage", damage); KvSetNum(g_Rpg_Items,"ammo", ammo);
+	KvSetNum(g_Rpg_Items,"clip", clip);
+	
+	new String:NdSkill[][] = {"needlv", "needstr", "needdex", "needint", "needend", "needhea", "needluc"}
+	new NdSkillNum = sizeof NdSkill
+	for(new i = 0; i < NdSkillNum; i++)
+		KvSetNum(g_Rpg_Items, NdSkill[i], needskill[i])
+	
+	KvRewind(g_Rpg_Items)
+	KeyValuesToFile(g_Rpg_Items, g_Items_Path);
+}
+
+
 //存档
 public rpg_Client_Save_Data(client)
 {
@@ -877,6 +878,47 @@ public rpg_Reset_Player_Vars(id)
 	g_money[id] = 0; g_job[id] = 0; g_Player_RespawnTime[id] = -1; g_Player_Restore_Point[id] = 0.0;
 } 
 
+
+//皮肤枪
+public rpg_Give_Weapon_Skin(client,String:WpnName[], SkinId)
+{
+	new entity = GivePlayerItem(client,  WpnName);
+	new m_iItemIDHigh = GetEntProp(entity, Prop_Send, "m_iItemIDHigh");
+	new m_iItemIDLow = GetEntProp(entity, Prop_Send, "m_iItemIDLow");
+	
+	SetEntProp(entity,Prop_Send,"m_iItemIDLow",2048);
+	SetEntProp(entity,Prop_Send,"m_iItemIDHigh",0);
+	SetEntProp(entity,Prop_Send,"m_nFallbackPaintKit", SkinId);
+    
+	new Handle:pack;
+	CreateDataTimer(1.0, RestoreItemID, pack);
+	WritePackCell(pack,entity);
+	WritePackCell(pack, m_iItemIDHigh);
+	WritePackCell(pack, m_iItemIDLow);
+	WritePackCell(pack, client);
+}
+
+public Action:RestoreItemID(Handle:timer, Handle:pack)
+{
+	new entity;
+	new m_iItemIDHigh;
+	new m_iItemIDLow;
+	new client;
+    
+	ResetPack(pack);
+	entity = ReadPackCell(pack);
+	m_iItemIDHigh = ReadPackCell(pack);
+	m_iItemIDLow = ReadPackCell(pack);
+	client = ReadPackCell(pack);
+	
+	new itemid = g_Player_Item_Weapon[client]
+    
+	SetEntProp(entity,Prop_Send,"m_iItemIDHigh",m_iItemIDHigh);
+	SetEntProp(entity,Prop_Send,"m_iItemIDLow",m_iItemIDLow);
+	rpg_Set_Ammo(entity, g_item_num[itemid][itemclip], g_item_num[itemid][itemammo]);
+	
+}  
+
 //扒武器
 public rpg_Strip_Weapon(client, slot)
 {
@@ -891,57 +933,18 @@ public rpg_Strip_Weapon(client, slot)
 	}
 }
 
-//皮肤枪
-public rpg_Give_Weapon_Skin(client,String:WpnName[], SkinId,ammo,clip)
+//背弹
+bool:rpg_Set_Ammo(weapon, clip=-1, ammo=-1)
 {
-	new entity = GivePlayerItem(client,  WpnName);
-	new m_iItemIDHigh = GetEntProp(entity, Prop_Send, "m_iItemIDHigh");
-	new m_iItemIDLow = GetEntProp(entity, Prop_Send, "m_iItemIDLow");
-
-	SetEntProp(entity,Prop_Send,"m_iItemIDLow",2048);
-	SetEntProp(entity,Prop_Send,"m_iItemIDHigh",0);
-	
-	rpg_SetAmmo(client,entity,ammo)
-	rpg_SetClip(client,entity,clip)
-
-	SetEntProp(entity,Prop_Send,"m_nFallbackPaintKit", SkinId);
-    
-	new Handle:pack;
-	CreateDataTimer(2.0, RestoreItemID, pack);
-	WritePackCell(pack,entity);
-	WritePackCell(pack, m_iItemIDHigh);
-	WritePackCell(pack, m_iItemIDLow);
+	if(clip != -1)
+		SetEntProp(weapon, Prop_Data, "m_iClip1", clip);
+	if(ammo != -1)
+		SetEntProp(weapon, Prop_Data, "m_iClip2", ammo);
 }
 
-public Action:RestoreItemID(Handle:timer, Handle:pack)
+
+public rpg_GetClassName(entity, String:buffer[], size)
 {
-	new entity;
-	new m_iItemIDHigh;
-	new m_iItemIDLow;
-    
-	ResetPack(pack);
-	entity = ReadPackCell(pack);
-	m_iItemIDHigh = ReadPackCell(pack);
-	m_iItemIDLow = ReadPackCell(pack);
-    
-	SetEntProp(entity,Prop_Send,"m_iItemIDHigh",m_iItemIDHigh);
-	SetEntProp(entity,Prop_Send,"m_iItemIDLow",m_iItemIDLow);
+	GetEntPropString(entity, Prop_Data, "m_iClassname", buffer, size);	
 }
 
-//设置子弹
-stock rpg_SetAmmo(client, weapon, ammo)
-{
-  SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", ammo); //set reserve to 0
-    
-  new ammotype = GetEntProp(weapon, Prop_Send, "m_iPrimaryAmmoType");
-  if(ammotype == -1) return;
-  
-  SetEntProp(client, Prop_Send, "m_iAmmo", ammo, _, ammotype);
-}
-
-//设置弹夹
-stock rpg_SetClip(client, weapon, ammo)
-{
-  SetEntProp(weapon, Prop_Send, "m_iClip1", ammo);
-  SetEntProp(weapon, Prop_Send, "m_iClip2", ammo);
-}
