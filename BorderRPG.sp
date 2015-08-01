@@ -245,6 +245,9 @@ public OnMapStart()
 {
 	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
 	ServerCommand("exec server.cfg")
+	new needskill[7]
+	rpg_Item_Weapon_Create("ggg", "weapon_ak47", 0, 108, 99, 88, 88, needskill)
+	rpg_Item_Weapon_Create("ggg", "weapon_ak47", 0, 108, 99, 88, 88, needskill)
 	rpg_Item_Weapon_Load(0)
 	rpg_Item_Weapon_Load(1)
 	g_ServerDiffcult = 1
@@ -873,8 +876,8 @@ public rpg_Item_Weapon_Create(String:name[], String:type[], slot, skin, damage, 
 	new itemid = 0;
 	while(KvJumpToKey(g_Rpg_Items, temp))
 	{
-		Format(temp, 31, "Item %d", itemid)
 		itemid++
+		Format(temp, 31, "Item %d", itemid)
 	}
 	KvRewind(g_Rpg_Items)
 	KvJumpToKey(g_Rpg_Items, temp, true)
