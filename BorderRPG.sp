@@ -76,7 +76,7 @@ new g_Player_RespawnTime[MAXPLAYER]	//复活时间
 new g_AliveTeam									//CT存活
 new g_ServerLevel									//服务器总等级
 new g_ServerDiffcult							//服务器难度
-new g_Player_Item_Weapon[MAXPLAYER]				//玩家目前武器装备
+new g_Player_Item_Weapon[MAXPLAYER][4]				//玩家各栏武器的ID
 
 //Bool
 new bool:g_IsCrit[MAXPLAYER]		//有没有暴击
@@ -229,7 +229,6 @@ public CvarsInit()
 public CommandInit()
 {
 	AddCommandListener(Command_JoinTeam, "jointeam"); 
-	AddCommandListener(Command_Test, "sm_testa");
 	RegConsoleCmd("sm_save",	Command_SaveUserData);
 }
 
@@ -246,8 +245,6 @@ public OnMapStart()
 {
 	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
 	ServerCommand("exec server.cfg")
-	new temp[7]
-	rpg_Item_Weapon_Create("Gaa", "weapon_ak47", 0, 26, 999, 80, 800, temp)
 	rpg_Item_Weapon_Load(0)
 	g_ServerDiffcult = 1
 	PrecacheInit()
@@ -271,6 +268,12 @@ public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroad
 	PrintToChatAll("\x01 \x03[RPGmod]\x02%T", "GameStart", LANG_SERVER);
 	PrintHintTextToAll("<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","GameStart",LANG_SERVER);
 	//PrintCenterTextAll("<font color='#66ccff'>[RPGmod]</font><font color='#66ff00'>%T</font>","GameStart",LANG_SERVER);
+}
+
+//装备武器
+public OnWeaponEquipPost(client, weapon)
+{
+	SDKHook(weapon, SDKHook_Reload, OnWeaponReload);
 }
 
 //玩家复活
@@ -312,6 +315,7 @@ public OnClientPutInServer(client)
 		g_ServerDiffcult = g_ServerLevel / GetConVarInt(g_lv_to_difficult)
 		PrintToChatAll("\x01 \x02[RPGmod]\x01%T", "Player_Join", LANG_SERVER, g_ServerLevel);
 		g_PlayerThinkTimer[client] = CreateTimer(1.0, Timer_PlayerThink, client, TIMER_REPEAT);
+		SDKHook(client, SDKHook_WeaponEquipPost, OnWeaponEquipPost);
 	}
 }
 
@@ -378,6 +382,7 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 			return Plugin_Continue;
 		
 		new Float:strb = GetConVarFloat(g_str_effect_damage);
+		
 		damage *= (1 + g_str[attacker] * strb);
 		
 		if(g_luc[attacker] > 0 && !IsFakeClient(attacker))
@@ -442,6 +447,76 @@ public Action:Event_PlayerDeath(Handle:event, String:event_name[], bool:dontBroa
 		PrintToChat(killer,"\x01 \x03[RPGmod]\x02%T", "Kill_T_Get_Text", LANG_SERVER, GetXp, GetMoney);
 	}
 
+	return Plugin_Continue;
+}
+
+//玩家换弹
+public Action:OnWeaponReload(weapon)
+{
+	new clip = rpg_Get_Clip(weapon);
+	new ammo = rpg_Get_Ammo(weapon);
+	
+	PrintToChatAll("Clip = %d",clip);
+	PrintToChatAll("Ammo = %d",ammo);
+	
+	new client = GetEntPropEnt(weapon, Prop_Data, "m_hOwnerEntity");
+	new slot;
+	for(new i = 0;i < 4;i++)
+	{
+		if(GetPlayerWeaponSlot(client, i) == weapon)
+		{
+			slot = i;
+			break;
+		}
+	}
+	
+	PrintToChatAll("slot = %d",slot);
+	
+	new itemid = g_Player_Item_Weapon[client][slot];
+	new Pclip = g_item_num[itemid][itemclip];
+	
+	if(clip == Pclip || ammo - (Pclip - clip) <= 0)
+		return Plugin_Handled;
+	
+	new Handle:data = INVALID_HANDLE;
+	CreateDataTimer(0.1,CheckReloadFinish,data,TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	
+	WritePackCell(data, client);
+	WritePackCell(data, weapon);
+	WritePackCell(data, Pclip);
+	WritePackCell(data, clip);
+	WritePackCell(data, ammo);
+	
+	return Plugin_Continue;
+}
+
+public Action:CheckReloadFinish(Handle:timer,any:data)
+{
+	if(data == INVALID_HANDLE)
+		return Plugin_Stop;
+	
+	ResetPack(data);
+	new client = ReadPackCell(data);
+	new weapon = ReadPackCell(data);
+	new Pclip = ReadPackCell(data);
+	new clip = ReadPackCell(data);
+	new ammo = ReadPackCell(data);
+	
+	if(weapon == INVALID_ENT_REFERENCE || !client)
+		return Plugin_Stop;
+	
+	if(rpg_GetActiveWeapon(client) != weapon)
+	{
+		rpg_Set_Ammo(weapon,clip,ammo);
+		return Plugin_Stop;
+	}
+		
+	
+	if(!rpg_IsReloading(weapon))
+	{
+		rpg_Set_Ammo(weapon,Pclip,ammo - (Pclip - clip));
+		return Plugin_Stop;
+	}
 	return Plugin_Continue;
 }
 
@@ -526,13 +601,6 @@ public Action:Command_JoinTeam(client, const String:command[], args)
 	
 	CS_SwitchTeam(client, CS_TEAM_CT)
 	return Plugin_Stop;
-}
-
-//
-public Action:Command_Test(client, const String:command[], args)
-{
-	rpg_Strip_Weapon(client, 0)
-	rpg_Give_Weapon_Skin(client, "weapon_ak47", 344)
 }
 
 public Action:Command_SaveUserData(client, args)
@@ -790,9 +858,9 @@ public rpg_Item_Weapon_Give(client,itemid)
 		PrintToServer("cannot find %d item", itemid);
 		return;
 	}
-	g_Player_Item_Weapon[client] = itemid
 	rpg_Strip_Weapon(client, g_item_num[itemid][itemslot]);
-	rpg_Give_Weapon_Skin(client, g_item_string[itemid][itemtype], g_item_num[itemid][itemskin]);
+	rpg_Give_Weapon_Skin(client, g_item_string[itemid][itemtype], g_item_num[itemid][itemskin],g_item_num[itemid][itemslot]);
+	g_Player_Item_Weapon[client][g_item_num[itemid][itemslot]] = itemid;
 }
 
 //创建物品
@@ -880,7 +948,7 @@ public rpg_Reset_Player_Vars(id)
 
 
 //皮肤枪
-public rpg_Give_Weapon_Skin(client,String:WpnName[], SkinId)
+public rpg_Give_Weapon_Skin(client,String:WpnName[], SkinId,slot)
 {
 	new entity = GivePlayerItem(client,  WpnName);
 	new m_iItemIDHigh = GetEntProp(entity, Prop_Send, "m_iItemIDHigh");
@@ -891,11 +959,12 @@ public rpg_Give_Weapon_Skin(client,String:WpnName[], SkinId)
 	SetEntProp(entity,Prop_Send,"m_nFallbackPaintKit", SkinId);
     
 	new Handle:pack;
-	CreateDataTimer(1.0, RestoreItemID, pack);
+	CreateDataTimer(0.5, RestoreItemID, pack);
 	WritePackCell(pack,entity);
 	WritePackCell(pack, m_iItemIDHigh);
 	WritePackCell(pack, m_iItemIDLow);
 	WritePackCell(pack, client);
+	WritePackCell(pack,	slot)
 }
 
 public Action:RestoreItemID(Handle:timer, Handle:pack)
@@ -904,19 +973,21 @@ public Action:RestoreItemID(Handle:timer, Handle:pack)
 	new m_iItemIDHigh;
 	new m_iItemIDLow;
 	new client;
+	new slot
     
 	ResetPack(pack);
 	entity = ReadPackCell(pack);
 	m_iItemIDHigh = ReadPackCell(pack);
 	m_iItemIDLow = ReadPackCell(pack);
 	client = ReadPackCell(pack);
+	slot = ReadPackCell(pack);
 	
-	new itemid = g_Player_Item_Weapon[client]
+	new itemid = g_Player_Item_Weapon[client][slot];
     
 	SetEntProp(entity,Prop_Send,"m_iItemIDHigh",m_iItemIDHigh);
 	SetEntProp(entity,Prop_Send,"m_iItemIDLow",m_iItemIDLow);
-	rpg_Set_Ammo(entity, g_item_num[itemid][itemclip], g_item_num[itemid][itemammo]);
 	
+	rpg_Set_Ammo(entity, g_item_num[itemid][itemclip], g_item_num[itemid][itemammo]);
 }  
 
 //扒武器
@@ -933,18 +1004,37 @@ public rpg_Strip_Weapon(client, slot)
 	}
 }
 
-//背弹
+//子弹一类的
 bool:rpg_Set_Ammo(weapon, clip=-1, ammo=-1)
 {
 	if(clip != -1)
 		SetEntProp(weapon, Prop_Data, "m_iClip1", clip);
 	if(ammo != -1)
-		SetEntProp(weapon, Prop_Data, "m_iClip2", ammo);
+		SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", ammo);
 }
 
+public int rpg_Get_Ammo(weapon)
+{
+	return GetEntProp(weapon, Prop_Send,"m_iPrimaryReserveAmmoCount");
+}
+
+public int rpg_Get_Clip(weapon)
+{
+	return GetEntProp(weapon, Prop_Data,"m_iClip1");
+}
 
 public rpg_GetClassName(entity, String:buffer[], size)
 {
 	GetEntPropString(entity, Prop_Data, "m_iClassname", buffer, size);	
+}
+
+public rpg_GetActiveWeapon(client)
+{
+	return GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
+}
+
+public bool:rpg_IsReloading(weapon)
+{
+	return bool:GetEntProp(weapon, Prop_Data, "m_bInReload");
 }
 
