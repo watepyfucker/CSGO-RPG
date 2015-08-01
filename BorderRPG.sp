@@ -246,6 +246,7 @@ public OnMapStart()
 	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
 	ServerCommand("exec server.cfg")
 	rpg_Item_Weapon_Load(0)
+	rpg_Item_Weapon_Load(1)
 	g_ServerDiffcult = 1
 	PrecacheInit()
 	// for(int i = 0;i < 15;i++)
@@ -285,7 +286,7 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 		g_Player_Restore_Point[client] = 0.0;
 		g_Player_RespawnTime[client] = -1;
 		g_AliveTeam++;
-		rpg_Item_Weapon_Give(client,0)
+		rpg_Item_Weapon_Give(client,1)
 		
 		//设置玩家属性
 		SetEntityHealth(client, MAX_HEALTH(client))
@@ -470,7 +471,7 @@ public Action:OnWeaponReload(weapon)
 	new itemid = g_Player_Item_Weapon[client][slot];
 	new Pclip = g_item_num[itemid][itemclip];
 	
-	if(clip == Pclip || ammo - (Pclip - clip) <= 0)
+	if(clip == Pclip || ammo == 0)
 		return Plugin_Handled;
 	
 	new Handle:data = INVALID_HANDLE;
@@ -496,9 +497,12 @@ public Action:CheckReloadFinish(Handle:timer,any:data)
 	new Pclip = ReadPackCell(data);
 	new clip = ReadPackCell(data);
 	new ammo = ReadPackCell(data);
+	new allammo = clip + ammo;
 	
 	if(weapon == INVALID_ENT_REFERENCE || !client)
 		return Plugin_Stop;
+	
+	rpg_Set_Ammo(weapon,0,allammo);
 	
 	if(rpg_GetActiveWeapon(client) != weapon)
 	{
@@ -506,10 +510,13 @@ public Action:CheckReloadFinish(Handle:timer,any:data)
 		return Plugin_Stop;
 	}
 		
-	
 	if(!rpg_IsReloading(weapon))
 	{
-		rpg_Set_Ammo(weapon,Pclip,ammo - (Pclip - clip));
+		if(allammo - Pclip >= 0)
+			rpg_Set_Ammo(weapon,Pclip,allammo - Pclip);
+		else
+			rpg_Set_Ammo(weapon,allammo,0);
+		
 		return Plugin_Stop;
 	}
 	return Plugin_Continue;
