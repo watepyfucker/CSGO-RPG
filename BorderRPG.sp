@@ -456,9 +456,6 @@ public Action:OnWeaponReload(weapon)
 	new clip = rpg_Get_Clip(weapon);
 	new ammo = rpg_Get_Ammo(weapon);
 	
-	PrintToChatAll("Clip = %d",clip);
-	PrintToChatAll("Ammo = %d",ammo);
-	
 	new client = GetEntPropEnt(weapon, Prop_Data, "m_hOwnerEntity");
 	new slot;
 	for(new i = 0;i < 4;i++)
@@ -469,8 +466,6 @@ public Action:OnWeaponReload(weapon)
 			break;
 		}
 	}
-	
-	PrintToChatAll("slot = %d",slot);
 	
 	new itemid = g_Player_Item_Weapon[client][slot];
 	new Pclip = g_item_num[itemid][itemclip];
