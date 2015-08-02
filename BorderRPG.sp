@@ -80,6 +80,7 @@ new g_Player_Item_Weapon[MAXPLAYER][4]				//玩家各栏武器的ID
 
 //Bool
 new bool:g_IsCrit[MAXPLAYER]		//有没有暴击
+new bool:g_IsRPGItem[MAXPLAYER]		//有没有给RPG物品
 
 //Convars
 new Handle:g_AutoSaveTime				//自动储存的时间
@@ -172,7 +173,7 @@ public FileDataInit()
 	else
 	{
 		PrintToServer("[BorderRPG]%T", "Cant_Find_Item_File", LANG_SERVER, g_Items_Path);
-		KeyValuesToFile(g_Rpg_Items, g_Items_Path)
+		KeyValuesToFile(g_Rpg_Items, g_Items_Path)	
 	}
 }
 
@@ -230,6 +231,7 @@ public CommandInit()
 {
 	AddCommandListener(Command_JoinTeam, "jointeam"); 
 	RegConsoleCmd("sm_save",	Command_SaveUserData);
+	RegConsoleCmd("rpg_item",	Command_GiveRPGItem);
 }
 
 /*
@@ -246,16 +248,13 @@ public OnMapStart()
 	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
 	ServerCommand("exec server.cfg")
 	new needskill[7]
-	rpg_Item_Weapon_Create("ggg", "weapon_ak47", 0, 108, 99, 88, 88, needskill)
-	rpg_Item_Weapon_Create("ggg", "weapon_ak47", 0, 108, 99, 88, 88, needskill)
-	rpg_Item_Weapon_Load(0)
-	rpg_Item_Weapon_Load(1)
+	for(int i = 0;i < MAXITEM;i++)
+	{
+		rpg_Item_Weapon_Load(i)
+	}
+	
 	g_ServerDiffcult = 1
 	PrecacheInit()
-	// for(int i = 0;i < 15;i++)
-	// {
-		// ServerCommand("bot_add_t");
-	// }
 }
 
 public OnMapEnd()
@@ -277,7 +276,22 @@ public Action:Event_RoundStart(Handle:event, String:event_name[], bool:dontBroad
 //装备武器
 public OnWeaponEquipPost(client, weapon)
 {
-	SDKHook(weapon, SDKHook_Reload, OnWeaponReload);
+	decl String:wpnName[32]
+	rpg_GetClassName(weapon,wpnName,sizeof(wpnName));
+	new slot;
+	for(new i = 0;i < 4;i++)
+	{
+		if(GetPlayerWeaponSlot(client, i) == weapon)
+		{
+			slot = i;
+			break;
+		}
+	}
+	if(g_IsRPGItem[client])
+		SDKHook(weapon, SDKHook_Reload, OnWeaponReload);
+	else
+		g_Player_Item_Weapon[client][slot] = 1025;
+	g_IsRPGItem[client] = false;
 }
 
 //玩家复活
@@ -289,12 +303,14 @@ public Action:Event_PlayerSpawn(Handle:event,const String:event_name[],bool:dont
 		g_Player_Restore_Point[client] = 0.0;
 		g_Player_RespawnTime[client] = -1;
 		g_AliveTeam++;
-		rpg_Item_Weapon_Give(client,1)
 		
 		//设置玩家属性
 		SetEntityHealth(client, MAX_HEALTH(client))
 		SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 
-		GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue") * (1.0 + g_dex[client] * GetConVarFloat(g_dex_effect_speed))); 
+		GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue") * (1.0 + g_dex[client] * GetConVarFloat(g_dex_effect_speed)));
+		
+		for(int i = 0;i < 4;i++)
+			g_Player_Item_Weapon[client][i] = 1025;
 		
 		PrintToChat(client, "speed:%f", GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue"))
 	}
@@ -341,6 +357,8 @@ public OnClientDisconnect(client)
 			PrintToChatAll("\x01 \x02[RPGmod]\x01%T", "Player_Quit", LANG_SERVER, g_ServerLevel, g_ServerDiffcult);
 			KillTimer(g_PlayerThinkTimer[client])
 			g_PlayerThinkTimer[client] = INVALID_HANDLE;
+			for(int i = 0;i < 4;i++)
+				g_Player_Item_Weapon[client][i] = 1025;
 		}
 	}
 }
@@ -471,6 +489,9 @@ public Action:OnWeaponReload(weapon)
 		}
 	}
 	
+	if(g_Player_Item_Weapon[client][slot] == 1025)
+		return Plugin_Continue;
+	
 	new itemid = g_Player_Item_Weapon[client][slot];
 	new Pclip = g_item_num[itemid][itemclip];
 	
@@ -537,6 +558,11 @@ public Action:Timer_PlayerThink(Handle:Timer, any:client)
 {
 	if(IsFakeClient(client))
 		return;
+	
+	decl String:Clan[200]
+	Format(Clan, sizeof(Clan), "%T ", "ClanModule", LANG_SERVER, g_mete[client],g_lv[client])
+	
+	CS_SetClientClanTag(client, Clan); 
 	
 	if(g_xp[client] >= NEXTLVXP(client))
 	{
@@ -616,6 +642,28 @@ public Action:Command_SaveUserData(client, args)
 	return Plugin_Continue; 
 }
 
+public Action:Command_GiveRPGItem(client,args)
+{
+	if(!IsClientConnected(client) && !(GetUserFlagBits(client) & ADMFLAG_GENERIC))
+	{
+		PrintToChat(client,"%T","NoPermission",LANG_SERVER);
+		return Plugin_Continue;
+	}
+	
+	if(!(args > 0))
+	{
+		PrintToChat(client,"%T","InvalidUsage",LANG_SERVER);
+		return Plugin_Continue;
+	}
+	decl String:arg1[20];
+	GetCmdArg(1, arg1, sizeof(arg1));
+	new itemid = 0;
+	StringToIntEx(arg1, itemid)
+	rpg_Item_Weapon_Give(client,itemid)
+	
+	return Plugin_Continue;
+}
+
 //Button
 public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)
 {
@@ -683,7 +731,6 @@ public Action:MenuShow_SkillMenu(id)
 	Format(MenuTitle, sizeof(MenuTitle), "%T ", "SkillMenu_Title", LANG_SERVER, g_sp[id])
 	
 	SetMenuTitle(menu, MenuTitle)
-	
 	
 	decl String:Item[64]
 	Format(Item, sizeof(Item), "%T ", "SkillMenu_AddModule",LANG_SERVER,"StrName",LANG_SERVER, g_str[id], GetConVarInt(g_str_max));
@@ -829,11 +876,10 @@ public rpg_Item_Weapon_Load(itemid)
 	KvRewind(g_Rpg_Items)
 	decl String:temp[32]
 	Format(temp, 32, "Item %d", itemid)
+	
 	if(!KvJumpToKey(g_Rpg_Items, temp))
-	{
-		PrintToServer("cannot find %s", temp);
 		return;
-	}
+	
 	KvGetString(g_Rpg_Items, "name", temp, sizeof(temp));	
 	Format(g_item_string[itemid][itemname], 31, "%s", temp)
 	KvGetString(g_Rpg_Items, "type", temp, sizeof(temp));
@@ -864,6 +910,7 @@ public rpg_Item_Weapon_Give(client,itemid)
 		return;
 	}
 	rpg_Strip_Weapon(client, g_item_num[itemid][itemslot]);
+	g_IsRPGItem[client] = true;
 	rpg_Give_Weapon_Skin(client, g_item_string[itemid][itemtype], g_item_num[itemid][itemskin],g_item_num[itemid][itemslot]);
 	g_Player_Item_Weapon[client][g_item_num[itemid][itemslot]] = itemid;
 }
@@ -934,8 +981,8 @@ public rpg_Client_Load_Data(client)
 	g_xp[client] = KvGetNum(g_Rpg_Save, "EXP", 0); g_money[client] = KvGetNum(g_Rpg_Save, "MONEY", 0);
 	g_job[client] = KvGetNum(g_Rpg_Save, "JOB", 0); g_mete[client] = KvGetNum(g_Rpg_Save, "METE", 0);
 	
-	g_str[client] = KvGetNum(g_Rpg_Save, "STR", 0); g_dex[client] = KvGetNum(g_Rpg_Save, "DEX", 0)
-	g_hea[client] = KvGetNum(g_Rpg_Save, "HEA", 0); g_int[client] = KvGetNum(g_Rpg_Save, "INT", 0)
+	g_str[client] = KvGetNum(g_Rpg_Save, "STR", 0); g_dex[client] = KvGetNum(g_Rpg_Save, "DEX", 0);
+	g_hea[client] = KvGetNum(g_Rpg_Save, "HEA", 0); g_int[client] = KvGetNum(g_Rpg_Save, "INT", 0);
 	g_end[client] = KvGetNum(g_Rpg_Save, "END", 0); g_luc[client] = KvGetNum(g_Rpg_Save, "LUC", 0);
 	
 	PrintToConsole(client, "[RPGmod]%T", "Player_Data_Loaded", LANG_SERVER)

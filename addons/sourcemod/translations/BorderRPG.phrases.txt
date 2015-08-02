@@ -157,5 +157,21 @@
 		"chi"			"暴击! -%dHP"
 	}
 	
+	"ClanModule"
+	{
+		"en"		    "%d-%dLV"
+		"chi"			"等级:%d-%d"
+	}
 	
+	"NoPermission"
+	{
+		"en"			"You not have enough permission to run this command"
+		"chi"			"你没有权限执行这个命令"
+	}
+	
+	"InvalidUsage"
+	{
+		"en"			"Usage Wrong!"
+		"chi"			"用法错误!"
+	}
 }
