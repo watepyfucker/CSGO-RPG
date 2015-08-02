@@ -278,15 +278,7 @@ public OnWeaponEquipPost(client, weapon)
 {
 	decl String:wpnName[32]
 	rpg_GetClassName(weapon,wpnName,sizeof(wpnName));
-	new slot;
-	for(new i = 0;i < 4;i++)
-	{
-		if(GetPlayerWeaponSlot(client, i) == weapon)
-		{
-			slot = i;
-			break;
-		}
-	}
+	new slot = rpg_Get_Weapon_Slot(client,weapon);
 	if(g_IsRPGItem[client])
 		SDKHook(weapon, SDKHook_Reload, OnWeaponReload);
 	else
@@ -405,7 +397,15 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 		
 		new Float:strb = GetConVarFloat(g_str_effect_damage);
 		
+		decl String:wpnName[32]
+		GetClientWeapon(attacker, wpnName, sizeof(wpnName));
+		
+		new slot = rpg_Get_Weapon_Slot_Name(attacker,wpnName);
+		
 		damage *= (1 + g_str[attacker] * strb);
+		
+		if(g_Player_Item_Weapon[attacker][slot] != 1025)
+			damage += g_item_num[g_Player_Item_Weapon[attacker][slot]][itemdamage]
 		
 		if(g_luc[attacker] > 0 && !IsFakeClient(attacker))
 		{
@@ -479,15 +479,7 @@ public Action:OnWeaponReload(weapon)
 	new ammo = rpg_Get_Ammo(weapon);
 	
 	new client = GetEntPropEnt(weapon, Prop_Data, "m_hOwnerEntity");
-	new slot;
-	for(new i = 0;i < 4;i++)
-	{
-		if(GetPlayerWeaponSlot(client, i) == weapon)
-		{
-			slot = i;
-			break;
-		}
-	}
+	new slot = rpg_Get_Weapon_Slot(client,weapon);
 	
 	if(g_Player_Item_Weapon[client][slot] == 1025)
 		return Plugin_Continue;
@@ -1090,3 +1082,32 @@ public bool:rpg_IsReloading(weapon)
 	return bool:GetEntProp(weapon, Prop_Data, "m_bInReload");
 }
 
+public int rpg_Get_Weapon_Slot(client,weapon)
+{
+	new slot;
+	for(new i = 0;i < 4;i++)
+	{
+		if(GetPlayerWeaponSlot(client, i) == weapon)
+		{
+			slot = i;
+			break;
+		}
+	}
+	return slot;
+}
+
+public int rpg_Get_Weapon_Slot_Name(client,String:wpnName[])
+{
+	new slot;
+	for(new i = 0;i < 4;i++)
+	{
+		decl String:weapon[32];
+		rpg_GetClassName(GetPlayerWeaponSlot(client,i),weapon,sizeof(weapon))
+		if(StrEqual(wpnName,weapon))
+		{
+			slot = i;
+			break
+		}
+	}
+	return slot;
+}
