@@ -231,7 +231,7 @@ public CommandInit()
 {
 	AddCommandListener(Command_JoinTeam, "jointeam"); 
 	RegConsoleCmd("sm_save",	Command_SaveUserData);
-	RegConsoleCmd("rpg_item",	Command_GiveRPGItem);
+	RegConsoleCmd("sm_rpg_item",	Command_GiveRPGItem);
 }
 
 /*
@@ -246,12 +246,9 @@ public CommandInit()
 public OnMapStart()
 {
 	g_PlayerAutoSaveTimer = CreateTimer(GetConVarFloat(g_AutoSaveTime), Timer_PlayerAutoSave, _, TIMER_REPEAT);
-	ServerCommand("exec server.cfg")
-	new needskill[7]
-	for(int i = 0;i < MAXITEM;i++)
-	{
+	ServerCommand("exec server.cfg")	
+	for(int i = 0;i < rpg_Get_Item_Weapon_Num();i++)
 		rpg_Item_Weapon_Load(i)
-	}
 	
 	g_ServerDiffcult = 1
 	PrecacheInit()
@@ -642,7 +639,7 @@ public Action:Command_GiveRPGItem(client,args)
 		return Plugin_Continue;
 	}
 	
-	if(!(args > 0))
+	if(args < 0)
 	{
 		PrintToChat(client,"%T","InvalidUsage",LANG_SERVER);
 		return Plugin_Continue;
@@ -907,8 +904,23 @@ public rpg_Item_Weapon_Give(client,itemid)
 	g_Player_Item_Weapon[client][g_item_num[itemid][itemslot]] = itemid;
 }
 
+//获取武器总数
+public rpg_Get_Item_Weapon_Num()
+{
+	decl String:temp[32]
+	Format(temp, 31, "Item 0")
+	new itemid = 0;
+	while(KvJumpToKey(g_Rpg_Items, temp))
+	{
+		itemid++
+		Format(temp, 31, "Item %d", itemid)
+	}
+	
+	return itemid+1
+}
+
 //创建物品
-public rpg_Item_Weapon_Create(String:name[], String:type[], slot, skin, damage, ammo, clip, needskill[])
+stock rpg_Item_Weapon_Create(String:name[], String:type[], slot, skin, damage, ammo, clip, needskill[])
 {
 	decl String:temp[32]
 	Format(temp, 31, "Item 0")
