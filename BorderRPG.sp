@@ -17,6 +17,7 @@ log:
 #include <adminmenu>
 #include <cstrike>
 #include <sdkhooks>
+#include <rpg_item_create>
 
 #define MAXITEM 1024
 #define MAXPLAYER 65
@@ -249,6 +250,11 @@ public OnMapStart()
 	ServerCommand("exec server.cfg")	
 	for(int i = 0;i < rpg_Get_Item_Weapon_Num();i++)
 		rpg_Item_Weapon_Load(i)
+	
+	new needskill[7]
+	rpg_Item_Weapon_Create("abc", "weapon_awp", 0, 95, 100, 500, 100, needskill)
+	rpg_Item_Weapon_Create("abc", "weapon_awp", 0, 95, 100, 500, 100, needskill)
+	rpg_Item_Weapon_Create("abc", "weapon_awp", 0, 95, 100, 500, 100, needskill)
 	
 	g_ServerDiffcult = 1
 	PrecacheInit()
@@ -517,7 +523,11 @@ public Action:CheckReloadFinish(Handle:timer,any:data)
 	
 	rpg_Set_Ammo(weapon,0,allammo);
 	
-	if(rpg_GetActiveWeapon(client) != weapon)
+	int ent = rpg_GetActiveWeapon(client)
+	if(IsValidEntity(ent))
+		return Plugin_Continue;
+	
+	if(ent != weapon)
 	{
 		rpg_Set_Ammo(weapon,clip,ammo);
 		return Plugin_Stop;
@@ -619,6 +629,7 @@ public Action:Command_JoinTeam(client, const String:command[], args)
 	if (!IsClientConnected(client))
         return Plugin_Continue; 
 	
+	PrintToChatAll("%s and %d", command, args)
 	CS_SwitchTeam(client, CS_TEAM_CT)
 	return Plugin_Stop;
 }
@@ -904,31 +915,16 @@ public rpg_Item_Weapon_Give(client,itemid)
 	g_Player_Item_Weapon[client][g_item_num[itemid][itemslot]] = itemid;
 }
 
-//获取武器总数
-public rpg_Get_Item_Weapon_Num()
-{
-	decl String:temp[32]
-	Format(temp, 31, "Item 0")
-	new itemid = 0;
-	while(KvJumpToKey(g_Rpg_Items, temp))
-	{
-		itemid++
-		Format(temp, 31, "Item %d", itemid)
-	}
-	
-	return itemid+1
-}
-
 //创建物品
 stock rpg_Item_Weapon_Create(String:name[], String:type[], slot, skin, damage, ammo, clip, needskill[])
 {
-	decl String:temp[32]
-	Format(temp, 31, "Item 0")
-	new itemid = 0;
+	decl String:temp[16]
+	new itemid= 0
+	Format(temp, 15, "Item 0")
 	while(KvJumpToKey(g_Rpg_Items, temp))
 	{
 		itemid++
-		Format(temp, 31, "Item %d", itemid)
+		Format(temp, 15, "Item %d", itemid)
 	}
 	KvRewind(g_Rpg_Items)
 	KvJumpToKey(g_Rpg_Items, temp, true)
@@ -949,6 +945,20 @@ stock rpg_Item_Weapon_Create(String:name[], String:type[], slot, skin, damage, a
 	KeyValuesToFile(g_Rpg_Items, g_Items_Path);
 }
 
+//获取武器总数
+stock rpg_Get_Item_Weapon_Num()
+{
+	decl String:temp[16]
+	Format(temp, 15, "Item 0")
+	new itemid = 0;
+	while(KvJumpToKey(g_Rpg_Items, temp))
+	{
+		itemid++
+		Format(temp, 15, "Item %d", itemid)
+	}
+	
+	return itemid+1
+}
 
 //存档
 public rpg_Client_Save_Data(client)
@@ -1081,12 +1091,15 @@ public int rpg_Get_Clip(weapon)
 
 public rpg_GetClassName(entity, String:buffer[], size)
 {
+	if(!IsValidEntity(entity))
+		return;
 	GetEntPropString(entity, Prop_Data, "m_iClassname", buffer, size);	
 }
 
 public rpg_GetActiveWeapon(client)
 {
-	return GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
+	int ent = GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
+	return ent;
 }
 
 public bool:rpg_IsReloading(weapon)
