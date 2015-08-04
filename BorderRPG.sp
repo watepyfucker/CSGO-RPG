@@ -17,7 +17,7 @@ log:
 #include <adminmenu>
 #include <cstrike>
 #include <sdkhooks>
-#include <rpg_item_create>
+// #include <rpg_item_create>
 
 #define MAXITEM 1024
 #define MAXPLAYER 65
@@ -251,10 +251,10 @@ public OnMapStart()
 	for(int i = 0;i < rpg_Get_Item_Weapon_Num();i++)
 		rpg_Item_Weapon_Load(i)
 	
-	new needskill[7]
+/* 	new needskill[7]
 	rpg_Item_Weapon_Create("abc", "weapon_awp", 0, 95, 100, 500, 100, needskill)
 	rpg_Item_Weapon_Create("abc", "weapon_awp", 0, 95, 100, 500, 100, needskill)
-	rpg_Item_Weapon_Create("abc", "weapon_awp", 0, 95, 100, 500, 100, needskill)
+	rpg_Item_Weapon_Create("abc", "weapon_awp", 0, 95, 100, 500, 100, needskill) */
 	
 	g_ServerDiffcult = 1
 	PrecacheInit()
